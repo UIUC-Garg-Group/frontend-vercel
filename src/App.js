@@ -8,7 +8,7 @@ import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
 import mqttService from './mqtt/mqttservice'; // Import the service
 
-function Dashboard({ user, onLogout, activePage, setActivePage, logs, addLog, mqttConnected }) {
+function Dashboard({ user, onLogout, activePage, setActivePage, logs, addLog, mqttConnected, onConnectMqtt, onDisconnectMqtt, mqttConnecting }) {
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 flex overflow-hidden">
@@ -17,6 +17,10 @@ function Dashboard({ user, onLogout, activePage, setActivePage, logs, addLog, mq
           setActivePage={setActivePage}
           user={user}
           onLogout={onLogout}
+          mqttConnected={mqttConnected}
+          mqttConnecting={mqttConnecting}
+          onConnectMqtt={onConnectMqtt}
+          onDisconnectMqtt={onDisconnectMqtt}
         />
         
         <div className="flex-1 flex flex-col min-w-0">
@@ -51,6 +55,7 @@ export default function App() {
   const [activePage, setActivePage] = useState('home'); 
   const [logs, setLogs] = useState([]);
   const [mqttConnected, setMqttConnected] = useState(false);
+  const [mqttConnecting, setMqttConnecting] = useState(false);
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('ur2_user');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -76,27 +81,31 @@ export default function App() {
     setActivePage('home');
   };
 
-  // Initialize MQTT connection once at app level - only after login
-  useEffect(() => {
+  // Manual MQTT connection handlers
+  const handleConnectMqtt = async () => {
     if (!user || !token) {
-      // Not logged in, don't connect to MQTT
+      addLog('Please login first');
       return;
     }
+    setMqttConnecting(true);
+    try {
+      await mqttService.loadConfiguration();
+      await mqttService.connect();
+      addLog('MQTT connection established');
+    } catch (error) {
+      addLog(`MQTT connection failed: ${error.message}`);
+    } finally {
+      setMqttConnecting(false);
+    }
+  };
 
-    const initializeMQTT = async () => {
-      try {
-        // Reload config with auth token, then connect
-        await mqttService.loadConfiguration();
-        await mqttService.connect();
-        addLog('MQTT connection established');
-      } catch (error) {
-        addLog(`MQTT connection failed: ${error.message}`);
-      }
-    };
+  const handleDisconnectMqtt = () => {
+    mqttService.disconnect();
+    addLog('MQTT disconnected');
+  };
 
-    initializeMQTT();
-
-    // Check connection status periodically
+  // Check MQTT connection status periodically
+  useEffect(() => {
     const checkConnection = () => {
       setMqttConnected(mqttService.isConnected);
     };
@@ -105,7 +114,6 @@ export default function App() {
     
     return () => {
       clearInterval(interval);
-      // Don't disconnect here - let it persist
     };
   }, []);
 
@@ -132,6 +140,9 @@ export default function App() {
                 logs={logs}
                 addLog={addLog}
                 mqttConnected={mqttConnected}
+                mqttConnecting={mqttConnecting}
+                onConnectMqtt={handleConnectMqtt}
+                onDisconnectMqtt={handleDisconnectMqtt}
               />
             ) : (
               <Navigate to="/login" replace />
