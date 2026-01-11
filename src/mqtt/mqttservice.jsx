@@ -46,7 +46,9 @@ class MQTTService {
         try {
             // First try to load from backend API
             const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
-            const response = await fetch(`${API_BASE_URL}/config/mqtt`);
+            const token = localStorage.getItem('ur2_token');
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const response = await fetch(`${API_BASE_URL}/config/mqtt`, { headers });
             if (response.ok) {
                 const config = await response.json();
                 this.MQTT_BROKER_URL = config.broker;
@@ -54,6 +56,10 @@ class MQTTService {
                 this.MQTT_PASSWORD = config.password;
                 this.configLoaded = true;
                 console.log("✅ Loaded MQTT config from backend");
+                return;
+            } else if (response.status === 401) {
+                console.warn("⚠️ Not authenticated, MQTT config will load after login");
+                this.configLoaded = false;
                 return;
             }
         } catch (error) {

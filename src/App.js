@@ -76,11 +76,18 @@ export default function App() {
     setActivePage('home');
   };
 
-  // Initialize MQTT connection once at app level
+  // Initialize MQTT connection once at app level - only after login
   useEffect(() => {
+    if (!user || !token) {
+      // Not logged in, don't connect to MQTT
+      return;
+    }
+
     const initializeMQTT = async () => {
       try {
-        await mqttService.connect(); //lets wait until i get promise
+        // Reload config with auth token, then connect
+        await mqttService.loadConfiguration();
+        await mqttService.connect();
         addLog('MQTT connection established');
       } catch (error) {
         addLog(`MQTT connection failed: ${error.message}`);
