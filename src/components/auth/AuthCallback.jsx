@@ -1,11 +1,15 @@
-import React, { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 export default function AuthCallback({ onLogin }) {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const processed = useRef(false);
 
   useEffect(() => {
+    // Only process once
+    if (processed.current) return;
+    processed.current = true;
+
     const token = searchParams.get('token');
     if (token) {
       try {
@@ -25,16 +29,16 @@ export default function AuthCallback({ onLogin }) {
         // Call onLogin callback
         onLogin(user, token);
         
-        // Redirect to dashboard
-        navigate('/', { replace: true });
+        // Redirect to dashboard using window.location to avoid React Router loops
+        window.location.href = '/';
       } catch (error) {
         console.error('Failed to parse token:', error);
-        navigate('/login?error=invalid_token', { replace: true });
+        window.location.href = '/login?error=invalid_token';
       }
     } else {
-      navigate('/login?error=no_token', { replace: true });
+      window.location.href = '/login?error=no_token';
     }
-  }, [searchParams, onLogin, navigate]);
+  }, [searchParams, onLogin]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
