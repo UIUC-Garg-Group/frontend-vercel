@@ -89,11 +89,10 @@ export default function App() {
     }
     setMqttConnecting(true);
     try {
-      await mqttService.loadConfiguration();
       await mqttService.connect();
-      addLog('MQTT connection established');
+      addLog('Connected to backend - MQTT relay active');
     } catch (error) {
-      addLog(`MQTT connection failed: ${error.message}`);
+      addLog(`Connection failed: ${error.message}`);
     } finally {
       setMqttConnecting(false);
     }
