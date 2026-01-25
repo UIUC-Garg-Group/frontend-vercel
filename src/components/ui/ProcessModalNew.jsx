@@ -300,6 +300,7 @@ const ProcessModal = ({
       if (siliconImageUrl) URL.revokeObjectURL(siliconImageUrl);
     };
     // only resub when modal opens/closes or connection changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, aluminumImageUrl, siliconImageUrl]);
 
   if (!isOpen) return null;
