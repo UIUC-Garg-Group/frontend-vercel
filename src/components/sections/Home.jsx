@@ -5,10 +5,12 @@ import TestDetailsModal from '../ui/TestDetailsModal';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import mqttService from '../../mqtt/mqttservice';
 import ProcessModalNew from '../ui/ProcessModalNew';
+import { useUser } from '../../context/UserContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
+  const { userId, teamId, isInTeam, loading: userLoading, syncUser } = useUser();
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -246,7 +248,24 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/runs`);
+      // Build query params based on user's team status
+      let url = `${API_BASE_URL}/runs`;
+      const params = new URLSearchParams();
+      
+      if (teamId) {
+        // User is in a team - fetch team's runs
+        params.append('team_id', teamId);
+      } else if (userId) {
+        // User has no team - fetch only their own runs
+        params.append('user_id', userId);
+      }
+      // If no user context, fetch all (backwards compatibility)
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -266,15 +285,22 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove addLog dependency to prevent re-creation
+  }, [teamId, userId]); // Re-fetch when team changes
 
   useEffect(() => {
-    // Only fetch runs if not already fetched
-    if (!hasFetchedRuns.current) {
+    // Sync user profile on mount
+    if (!userLoading) {
+      syncUser();
+    }
+  }, [userLoading, syncUser]);
+
+  useEffect(() => {
+    // Fetch runs when user/team data is available
+    if (!userLoading) {
       fetchRuns();
       hasFetchedRuns.current = true;
     }
-  }, [fetchRuns]);
+  }, [fetchRuns, userLoading]);
 
   const handleView = (run) => {
     addLog && addLog(`Viewing run: ${run.trial_name} (${run.trial_id})`);

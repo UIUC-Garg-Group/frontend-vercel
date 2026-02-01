@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { User, FileText, Hash, RotateCcw, Send } from 'lucide-react';
 import mqttService from '../../mqtt/mqttservice';
+import { useUser } from '../../context/UserContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 export default function CreatePage({ addLog, setActivePage, mqttConnected: mqttConnectedProp }) {
+  const { userId, teamId } = useUser();
   const [formData, setFormData] = useState({
     trialName: '',
     userName: '',
@@ -103,7 +105,9 @@ export default function CreatePage({ addLog, setActivePage, mqttConnected: mqttC
         body: JSON.stringify({
           trial_name: formData.trialName,
           trial_operator: formData.userName,
-          sample_size: parseInt(formData.sampleSize)
+          sample_size: parseInt(formData.sampleSize),
+          user_id: userId || null,
+          team_id: teamId || null
         })
       });      if (response.ok) {
         const result = await response.json();

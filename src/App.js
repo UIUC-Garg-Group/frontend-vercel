@@ -6,6 +6,7 @@ import MainView from './components/dashboard/MainView';
 import Console from './components/dashboard/Console';
 import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
+import { UserProvider } from './context/UserContext';
 import mqttService from './mqtt/mqttservice'; // Import the service
 
 function Dashboard({ user, onLogout, activePage, setActivePage, logs, addLog, mqttConnected, onConnectMqtt, onDisconnectMqtt, mqttConnecting }) {
@@ -117,38 +118,40 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to="/" replace /> : <Login />} 
-        />
-        <Route 
-          path="/auth/callback" 
-          element={<AuthCallback onLogin={handleLogin} />} 
-        />
-        <Route 
-          path="/*" 
-          element={
-            user ? (
-              <Dashboard
-                user={user}
-                onLogout={handleLogout}
-                activePage={activePage}
-                setActivePage={setActivePage}
-                logs={logs}
-                addLog={addLog}
-                mqttConnected={mqttConnected}
-                mqttConnecting={mqttConnecting}
-                onConnectMqtt={handleConnectMqtt}
-                onDisconnectMqtt={handleDisconnectMqtt}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          } 
-        />
-      </Routes>
-    </BrowserRouter>
+    <UserProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route 
+            path="/login" 
+            element={user ? <Navigate to="/" replace /> : <Login />} 
+          />
+          <Route 
+            path="/auth/callback" 
+            element={<AuthCallback onLogin={handleLogin} />} 
+          />
+          <Route 
+            path="/*" 
+            element={
+              user ? (
+                <Dashboard
+                  user={user}
+                  onLogout={handleLogout}
+                  activePage={activePage}
+                  setActivePage={setActivePage}
+                  logs={logs}
+                  addLog={addLog}
+                  mqttConnected={mqttConnected}
+                  mqttConnecting={mqttConnecting}
+                  onConnectMqtt={handleConnectMqtt}
+                  onDisconnectMqtt={handleDisconnectMqtt}
+                />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            } 
+          />
+        </Routes>
+      </BrowserRouter>
+    </UserProvider>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import MQTTSettings from '../admin/MQTTSettings';
+import TeamManagement from '../admin/TeamManagement';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('mqtt');
@@ -7,7 +8,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'mqtt', label: 'MQTT Configuration', icon: '🔗' },
     { id: 'system', label: 'System Settings', icon: '⚙️' },
-    { id: 'users', label: 'User Management', icon: '👥' },
+    { id: 'users', label: 'Team Management', icon: '👥' },
   ];
 
   return (
@@ -58,20 +59,7 @@ export default function SettingsPage() {
           </div>
         )}
         
-        {activeTab === 'users' && (
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">User Management</h3>
-            <div className="text-gray-600">
-              <p>User management features will be available here:</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Create and manage user accounts</li>
-                <li>Set permissions and access levels</li>
-                <li>Audit logs and user activity</li>
-                <li>Password policies and security settings</li>
-              </ul>
-            </div>
-          </div>
-        )}
+        {activeTab === 'users' && <TeamManagement />}
       </div>
     </div>
   );
