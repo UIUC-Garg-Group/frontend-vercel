@@ -10,7 +10,7 @@ import { useUser } from '../../context/UserContext';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
-  const { userId, teamId, isInTeam, loading: userLoading, syncUser } = useUser();
+  const { userId, teamId, loading: userLoading, syncUser } = useUser();
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
