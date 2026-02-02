@@ -115,11 +115,8 @@ export default function UR2Stepper({
               >
                 <StepLabel slots={{ stepIcon: StepIconWithStatus }}>
                   <div className="flex flex-col ml-2">
-                    <span className="text-sm font-medium text-gray-900 leading-tight">
-                      {title === "Image Capture" ? "Aluminum Image Capture" : title}
-                    </span>
                     <span
-                      className="mt-1 text-xs capitalize"
+                      className="mb-1 text-xs capitalize"
                       style={{
                         color:
                           status === "done"
@@ -132,6 +129,9 @@ export default function UR2Stepper({
                       }}
                     >
                       {status}
+                    </span>
+                    <span className="text-sm font-medium text-gray-900 leading-tight">
+                      {title === "Image Capture" ? "Aluminum Image Capture" : title}
                     </span>
                   </div>
                 </StepLabel>
@@ -166,11 +166,8 @@ export default function UR2Stepper({
                   sx={{ "& .MuiStepLabel-label": { mt: 1 } }}
                 >
                   <div className="flex flex-col items-center leading-tight">
-                    <span className="text-sm whitespace-pre-line">
-                      {title === "Image Capture" ? "Aluminum Image\nCapture" : title}
-                    </span>
                     <span
-                      className="mt-1 text-xs capitalize"
+                      className="mb-1 text-xs capitalize"
                       style={{
                         color:
                           status === "done"
@@ -183,6 +180,9 @@ export default function UR2Stepper({
                       }}
                     >
                       {status}
+                    </span>
+                    <span className="text-sm whitespace-pre-line">
+                      {title === "Image Capture" ? "Aluminum Image\nCapture" : title}
                     </span>
                   </div>
                 </StepLabel>
