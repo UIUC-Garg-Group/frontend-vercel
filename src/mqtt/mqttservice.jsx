@@ -33,6 +33,7 @@ class MQTTService {
 
         this.isConnecting = true;
         
+        // Determine backend URL from environment or default
         const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
         
         return new Promise((resolve, reject) => {
