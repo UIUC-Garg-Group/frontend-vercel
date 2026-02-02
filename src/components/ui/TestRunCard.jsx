@@ -86,31 +86,31 @@ export default function TestRunCard({ run, onView, onRerun, onStatus, onDelete, 
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
           <button
             onClick={() => onView(run)}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
+            className="flex-1 bg-[#F1F5F9] border-2 border-[#BFC7D2] text-[#4B5563] hover:bg-[#E2E8F0] text-sm font-semibold py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
           >
             <Eye className="w-4 h-4 mr-1" />
             View
           </button>
           <button
             onClick={() => onStatus(run)}
-            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
+            className="flex-1 bg-[#F1F5F9] border-2 border-[#BFC7D2] text-[#4B5563] hover:bg-[#E2E8F0] text-sm font-semibold py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
           >
             <Activity className="w-4 h-4 mr-1" />
             Status
           </button>
           <button
             onClick={() => onRerun(run)}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
+            className="flex-1 bg-[#F1F5F9] border-2 border-[#BFC7D2] text-[#4B5563] hover:bg-[#E2E8F0] text-sm font-semibold py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
           >
             <Play className="w-4 h-4 mr-1" />
             Rerun
           </button>
           <button
             onClick={() => onDelete(run)}
-            className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
+            className="text-[#DC2626] hover:text-[#B91C1C] text-sm font-semibold py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center"
             title="Delete test"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-6 h-6" />
           </button>
         </div>
       </div>

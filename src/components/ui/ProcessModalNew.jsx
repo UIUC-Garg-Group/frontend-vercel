@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import mqttService from '../../mqtt/mqttservice';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import UR2Stepper from './UR2Stepper';
+import useModalClose from '../../hooks/useModalClose';
 
 const IMAGE_TOPIC = 'ur2/test/image';
 const IMAGE_RAW_TOPIC = 'ur2/test/image/raw';
@@ -107,6 +108,15 @@ const ProcessModal = ({
       alert('Could not access camera. Please check permissions.');
     }
   };
+
+  const closeCameraModal = useCallback(() => {
+    const stream = videoRef.current?.srcObject;
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setShowCameraModal(false);
+    setCurrentCameraCapture(null);
+  }, []);
 
   const capturePicture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -302,6 +312,12 @@ const ProcessModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, aluminumImageUrl, siliconImageUrl]);
 
+  const { handleBackdropClick } = useModalClose({ isOpen, onClose });
+  const { handleBackdropClick: handleCameraBackdropClick } = useModalClose({
+    isOpen: showCameraModal,
+    onClose: closeCameraModal
+  });
+
   if (!isOpen) return null;
 
   // Format concentration values
@@ -385,7 +401,10 @@ const ProcessModal = ({
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-0 md:p-4 bg-black bg-opacity-50 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-0 md:p-4 bg-black bg-opacity-50 overflow-y-auto"
+      onClick={handleBackdropClick}
+    >
       <div className="flex flex-col w-full min-h-full md:min-h-0 md:max-h-[90vh] max-w-full md:max-w-4xl lg:max-w-6xl xl:max-w-7xl bg-white md:rounded-lg shadow-xl md:my-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-shrink-0 p-4 md:p-6 border-b border-gray-200">
@@ -744,7 +763,10 @@ const ProcessModal = ({
 
       {/* Camera Capture Modal */}
       {showCameraModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={handleCameraBackdropClick}
+        >
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
             <h3 className="text-xl font-semibold mb-4">Capture Image - Sample {currentCameraCapture?.cycle}</h3>
             <div className="relative">
@@ -759,14 +781,7 @@ const ProcessModal = ({
             </div>
             <div className="flex gap-4 justify-end">
               <button
-                onClick={() => {
-                  const stream = videoRef.current?.srcObject;
-                  if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                  }
-                  setShowCameraModal(false);
-                  setCurrentCameraCapture(null);
-                }}
+                onClick={closeCameraModal}
                 className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors"
               >
                 Cancel

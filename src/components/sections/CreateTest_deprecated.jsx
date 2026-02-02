@@ -173,24 +173,6 @@ export default function CreatePage({ addLog, setActivePage, mqttConnected: mqttC
         <h1 className="text-2xl font-bold text-gray-900">Create New Test</h1>
       </div>
 
-      {/* MQTT Connection Status */}
-      <div className="mb-4 p-3 rounded-lg flex items-center bg-gray-50">
-        <div className={`w-3 h-3 rounded-full mr-2 ${mqttConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-        <span className="text-sm text-gray-600">
-          MQTT: {mqttConnected ? 'Connected' : 'Disconnected'}
-        </span>
-        {mqttConnected && (
-          <span className="ml-4 text-xs text-green-600">
-            Device ready
-          </span>
-        )}
-        {!mqttConnected && (
-          <span className="ml-4 text-xs text-red-600">
-            Test will be created but not started automatically
-          </span>
-        )}
-      </div>
-
       <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
         <div className="space-y-6">
           {/* Trial Name */}
