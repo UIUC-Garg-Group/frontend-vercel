@@ -1,11 +1,10 @@
 import React from 'react';
-import { Home, PlusCircle, Settings, HelpCircle, ChevronLeft, ChevronRight, LogOut, User, Wifi, WifiOff, Loader } from 'lucide-react';
+import { Home, Settings, HelpCircle, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
 
-export default function Navbar({ activePage, setActivePage, user, onLogout, mqttConnected, mqttConnecting, onConnectMqtt, onDisconnectMqtt }) {
+export default function Navbar({ activePage, setActivePage, user, onLogout }) {
   const [collapsed, setCollapsed] = React.useState(false);
   const navItems = [
     { name: 'home', icon: <Home />, label: 'Home' },
-    { name: 'create', icon: <PlusCircle />, label: 'Create' },
     { name: 'settings', icon: <Settings />, label: 'Settings' },
     { name: 'help', icon: <HelpCircle />, label: 'Help' }
   ];
@@ -30,32 +29,6 @@ export default function Navbar({ activePage, setActivePage, user, onLogout, mqtt
       
       {/* Spacer */}
       <div className="flex-1" />
-      
-      {/* MQTT Connection Button */}
-      <div className="border-t border-gray-700 p-3">
-        {mqttConnected ? (
-          <button
-            onClick={onDisconnectMqtt}
-            className={`w-full flex items-center gap-2 p-2 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors ${collapsed ? 'justify-center' : ''}`}
-          >
-            <Wifi size={16} />
-            {!collapsed && 'MQTT Connected'}
-          </button>
-        ) : (
-          <button
-            onClick={onConnectMqtt}
-            disabled={mqttConnecting}
-            className={`w-full flex items-center gap-2 p-2 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50 ${collapsed ? 'justify-center' : ''}`}
-          >
-            {mqttConnecting ? (
-              <Loader size={16} className="animate-spin" />
-            ) : (
-              <WifiOff size={16} />
-            )}
-            {!collapsed && (mqttConnecting ? 'Connecting...' : 'Connect MQTT')}
-          </button>
-        )}
-      </div>
       
       {/* User Info & Logout */}
       {user && (

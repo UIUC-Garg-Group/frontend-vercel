@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import mqttService from '../../mqtt/mqttservice';
 import { X, Check, Loader2, XCircle } from 'lucide-react';
+import useModalClose from '../../hooks/useModalClose';
 
 
 const IMAGE_TOPIC = 'ur2/test/image';
@@ -49,6 +50,7 @@ const ProcessModal = ({ isOpen, onClose, currentStage, stages, currentCycle = 1,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, mqttService.isConnected, latestImageMeta]);
+  const { handleBackdropClick } = useModalClose({ isOpen, onClose });
 
   if (!isOpen) return null;
 
@@ -105,7 +107,10 @@ const ProcessModal = ({ isOpen, onClose, currentStage, stages, currentCycle = 1,
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-screen overflow-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">

@@ -457,22 +457,13 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       {/* <div className="mb-6">
         <h1 className="text-gray-600 mb-2">View and manage your previous test runs</h1>
       </div> */}
-      <div className="mb-4 p-3 rounded-lg flex items-center bg-gray-50">
-        <div className={`w-3 h-3 rounded-full mr-2 ${mqttConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-        <span className="text-sm text-gray-600">
-          MQTT: {mqttConnected ? 'Connected' : 'Disconnected'}
-        </span>
-        {mqttConnected && (
-          <span className="ml-4 text-xs text-green-600">
-            Device ready
-          </span>
-        )}
-        {activeTests.size > 0 && (
-          <span className="ml-4 text-xs text-blue-600">
+      {activeTests.size > 0 && (
+        <div className="mb-4 p-3 rounded-lg flex items-center bg-gray-50">
+          <span className="text-sm text-blue-600">
             {activeTests.size} active test{activeTests.size > 1 ? 's' : ''}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {runs.length === 0 ? (
         <div className="text-center py-12">

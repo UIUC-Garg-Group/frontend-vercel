@@ -17,6 +17,48 @@ class MQTTService {
         this.confirmationCallback = null;
         this.imageCallback = null;
         this.statusCallback = null;
+        
+        // Message handlers for MQTT-like API compatibility
+        this._messageHandlers = [];
+    }
+    
+    // Expose socket as 'client' for backwards compatibility with components
+    // that expect an MQTT-like client interface
+    get client() {
+        if (!this.socket) return null;
+        
+        // Create a wrapper that provides MQTT-like API
+        const self = this;
+        return {
+            get connected() {
+                return self.isConnected;
+            },
+            // Subscribe is a no-op since backend handles all subscriptions
+            subscribe: (topic) => {
+                console.log(`📡 [mqttService] Subscribe requested for: ${topic} (handled by backend)`);
+            },
+            // Wrap socket.on to handle 'message' events specially
+            on: (event, handler) => {
+                if (event === 'message') {
+                    // Store message handler for later invocation
+                    self._messageHandlers.push(handler);
+                } else {
+                    self.socket.on(event, handler);
+                }
+            },
+            // Remove listener
+            removeListener: (event, handler) => {
+                if (event === 'message') {
+                    self._messageHandlers = self._messageHandlers.filter(h => h !== handler);
+                } else {
+                    self.socket.removeListener(event, handler);
+                }
+            },
+            // Publish via backend
+            publish: (topic, message) => {
+                self.socket.emit('mqtt:publish', { topic, message });
+            }
+        };
     }
 
     async connect() {
@@ -33,6 +75,7 @@ class MQTTService {
 
         this.isConnecting = true;
         
+        // Determine backend URL from environment or default
         const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
         
         return new Promise((resolve, reject) => {
@@ -80,6 +123,14 @@ class MQTTService {
                 if (this.imageCallback) {
                     this.imageCallback(data, null);
                 }
+                // Also invoke message handlers for MQTT-like API compatibility
+                this._messageHandlers.forEach(handler => {
+                    try {
+                        handler('ur2/test/image', JSON.stringify(data));
+                    } catch (e) {
+                        console.error('Error in message handler:', e);
+                    }
+                });
             });
 
             this.socket.on('mqtt:image:raw', (base64Data) => {
@@ -87,6 +138,20 @@ class MQTTService {
                 if (this.imageCallback) {
                     this.imageCallback(null, base64Data);
                 }
+                // Also invoke message handlers for MQTT-like API compatibility
+                // Convert base64 back to buffer-like format
+                this._messageHandlers.forEach(handler => {
+                    try {
+                        const binaryString = atob(base64Data);
+                        const bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        handler('ur2/test/image/raw', bytes);
+                    } catch (e) {
+                        console.error('Error in message handler:', e);
+                    }
+                });
             });
 
             this.socket.on('mqtt:error', (data) => {

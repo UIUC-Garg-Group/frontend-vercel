@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import mqttService from '../../mqtt/mqttservice';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import UR2Stepper from './UR2Stepper';
+import useModalClose from '../../hooks/useModalClose';
 
 const IMAGE_TOPIC = 'ur2/test/image';
 const IMAGE_RAW_TOPIC = 'ur2/test/image/raw';
@@ -18,7 +19,6 @@ const ProcessModal = ({
   currentCycle = 1,
   title = "Process Running",
   isInterrupted = false,
-  onStageChange,
   waitingCameraPreview = false,
   activeTestId = null,
   onResultsUpdate = null  // Callback to pass results to parent
@@ -108,6 +108,15 @@ const ProcessModal = ({
       alert('Could not access camera. Please check permissions.');
     }
   };
+
+  const closeCameraModal = useCallback(() => {
+    const stream = videoRef.current?.srcObject;
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    setShowCameraModal(false);
+    setCurrentCameraCapture(null);
+  }, []);
 
   const capturePicture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -303,7 +312,18 @@ const ProcessModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, aluminumImageUrl, siliconImageUrl]);
 
+  const { handleBackdropClick } = useModalClose({ isOpen, onClose });
+  const { handleBackdropClick: handleCameraBackdropClick } = useModalClose({
+    isOpen: showCameraModal,
+    onClose: closeCameraModal
+  });
+
   if (!isOpen) return null;
+
+  // Format concentration values
+  const formatConcentration = (value) => {
+    return value != null ? parseFloat(value).toFixed(3) : 'N/A';
+  };
 
   // Progress (clamped)
   const total = Math.max(1, stages?.length ?? 1);
@@ -381,21 +401,24 @@ const ProcessModal = ({
 
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full h-full max-h-[90vh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-0 md:p-4 bg-black bg-opacity-50 overflow-y-auto"
+      onClick={handleBackdropClick}
+    >
+      <div className="flex flex-col w-full min-h-full md:min-h-0 md:max-h-[90vh] max-w-full md:max-w-4xl lg:max-w-6xl xl:max-w-7xl bg-white md:rounded-lg shadow-xl md:my-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+        <div className="flex items-center justify-between flex-shrink-0 p-4 md:p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3 md:gap-4 flex-wrap">
+            <div className="flex items-center gap-3 md:gap-4">
+              <h2 className="text-lg md:text-xl font-semibold text-gray-900">{title}</h2>
               {currentCycle > 0 && (
-                <p className="text-sm text-gray-600 mt-1">Sample {currentCycle} of 5</p>
+                <p className="text-sm text-gray-600">Sample {currentCycle} of 5</p>
               )}
             </div>
             {viewingStage !== currentStage && (
               <button
                 onClick={handleGoToCurrentStage}
-                className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 transition-colors"
+                className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
               >
                 Go to Current Stage
               </button>
@@ -410,7 +433,7 @@ const ProcessModal = ({
         </div>
 
         {/* Stage Navigation */}
-        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 bg-gray-50 border-b border-gray-200">
           <button
             onClick={handlePrevStage}
             disabled={!canGoBack}
@@ -445,12 +468,24 @@ const ProcessModal = ({
           </button>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 p-6 min-h-0 overflow-y-auto">
-          
-          {/* Manual Instructions for Heat & Stirring Stage - Compact version */}
-          {isHeatStage && !isComplete && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+        {/* Mobile Progress Bar - Shows only on mobile */}
+        <div className="md:hidden p-3">
+          <div className="flex justify-between text-xs text-gray-600 mb-2">
+            <span>Progress</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div
+              className="bg-blue-600 h-1.5 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Notification Boxes - Manual Instructions & Camera Preview */}
+        {/* Manual Instructions for Heat & Stirring Stage - Compact version */}
+        {isHeatStage && !isComplete && (
+          <div className="p-4 md:p-6 mb-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
@@ -496,21 +531,23 @@ const ProcessModal = ({
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-green-700">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-700"></div>
-                        <span className="text-xs font-medium">Waiting for dissolution...</span>
+                        <span className="text-xs font-medium">{waitSkipped ? 'Wait skipped!' : 'Waiting for dissolution...'}</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-2xl font-bold text-green-800 tabular-nums">
-                          {Math.floor(remainingTime / 60)}:{String(remainingTime % 60).padStart(2, '0')}
+                      {!waitSkipped && (
+                        <div className="flex items-center justify-between">
+                          <div className="text-2xl font-bold text-green-800 tabular-nums">
+                            {Math.floor(remainingTime / 60)}:{String(remainingTime % 60).padStart(2, '0')}
+                          </div>
+                          {remainingTime > 0 && (
+                            <button
+                              onClick={handleSkipWait}
+                              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium rounded transition-colors"
+                            >
+                              ⚡ Skip
+                            </button>
+                          )}
                         </div>
-                        {remainingTime > 0 && (
-                          <button
-                            onClick={handleSkipWait}
-                            className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium rounded transition-colors"
-                          >
-                            ⚡ Skip
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -518,17 +555,31 @@ const ProcessModal = ({
             </div>
           )}
 
+        {/* Scrollable Content - Stepper + Results + Images */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          
+          {/* Stepper Section */}
+          <div className="flex justify-center mb-6">
+            <div className="w-full max-w-4xl">
+              <UR2Stepper
+                stages={stages}
+                currentStage={currentStage}
+                isInterrupted={isInterrupted}
+              />
+            </div>
+          </div>
+          
           {/* Camera Preview Confirmation - Shows when RPI is displaying camera preview */}
           {waitingCameraPreview && !isComplete && (
             <div className="mb-4 p-4 bg-purple-50 border border-purple-300 rounded-lg">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
-                  <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white text-xl">
+                  <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white text-lg">
                     📷
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-base font-semibold text-purple-900 mb-2">Camera Preview Active</h4>
+                  <h4 className="text-sm font-semibold text-purple-900 mb-2">Camera Preview Active</h4>
                   <p className="text-sm text-purple-800 mb-3">
                     The camera preview is now displaying on the Raspberry Pi screen. 
                     Select the sample type and click confirm when the preview looks good.
@@ -581,16 +632,15 @@ const ProcessModal = ({
           )}
           
           {/* Results and Images Container */}
-          <div className="grid grid-cols-2 gap-6">
+          <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:h-full md:overflow-hidden">
             
-```            {/* Concentration Results - Left Side */}
-            <div className="flex flex-col min-h-0">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-700">Concentration Results</h3>
+            {/* Concentration Results - Left Side */}
+            <div className="flex flex-col md:min-h-0 md:h-full">
+              <div className="flex items-center justify-end flex-shrink-0 mb-3 md:mb-4">
                 {(aluminumResults.length > 0 || siliconResults.length > 0) && (
                   <button
                     onClick={handleExportJSON}
-                    className="flex items-center gap-1 px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1 text-sm text-white bg-green-500 rounded hover:bg-green-600 transition-colors"
                     title="Export results as JSON"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -600,7 +650,7 @@ const ProcessModal = ({
                   </button>
                 )}
               </div>
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto border border-gray-200 rounded-lg">
                 {Math.max(aluminumResults.length, siliconResults.length) === 0 ? (
                   <div className="text-gray-400 text-sm py-8 text-center">
                     No results yet...
@@ -610,9 +660,9 @@ const ProcessModal = ({
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-white">
                         <tr className="border-b-2 border-gray-200">
-                          <th className="text-left py-3 font-semibold text-gray-700">Sample</th>
-                          <th className="text-left py-3 font-semibold text-gray-700">Aluminum (μM)</th>
-                          <th className="text-left py-3 font-semibold text-gray-700">Silicon (μM)</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Sample</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum (μM)</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon (μM)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -620,16 +670,11 @@ const ProcessModal = ({
                           const alData = aluminumResults[index];
                           const siData = siliconResults[index];
                           const sampleNumber = index + 1;
-                          
-                          const formatConcentration = (value) => {
-                            return value != null ? parseFloat(value).toFixed(3) : 'N/A';
-                          };
-                          
                           return (
                             <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="py-3 text-gray-700 font-medium">{sampleNumber}</td>
-                              <td className="py-3 text-gray-600">{formatConcentration(alData?.concentration)}</td>
-                              <td className="py-3 text-gray-600">{formatConcentration(siData?.concentration)}</td>
+                              <td className="py-3 px-3 md:px-4 text-gray-700 font-medium">{sampleNumber}</td>
+                              <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(alData?.concentration)}</td>
+                              <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(siData?.concentration)}</td>
                             </tr>
                           );
                         })}
@@ -641,14 +686,12 @@ const ProcessModal = ({
             </div>
             
             {/* Images - Right Side */}
-            <div className="flex flex-col min-h-0">
-              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Images from RPI</h3>
-              <div className="flex-1 flex items-center justify-center">
-                <div className="grid grid-cols-2 gap-2 w-full max-w-md">
+            <div className="flex flex-col items-center justify-center">
+              <div className="grid grid-cols-2 gap-6 w-full max-w-md">
                   
                   {/* Aluminum Image */}
                   <div className="flex flex-col items-center">
-                    <div className="text-xs text-gray-500 mb-2">Aluminum</div>
+                    <div className="mb-3 text-sm font-medium text-gray-600">Aluminum</div>
                     {aluminumImageUrl ? (
                       <img
                         src={aluminumImageUrl}
@@ -662,11 +705,11 @@ const ProcessModal = ({
                       />
                     ) : null}
                     <div 
-                      className="w-32 h-40 bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center text-xs text-gray-400 rounded"
+                      className="flex flex-col items-center justify-center w-32 h-40 text-xs text-center text-gray-400 bg-gray-50 border border-dashed border-gray-300 rounded"
                       style={{ display: aluminumImageUrl ? 'none' : 'flex' }}
                     >
                       
-                      <div className="text-center">
+                      <div className="text-sm text-center">
                         {aluminumImageUrl ? 'Image N/A' : 'Waiting for Image...'}
                       </div>
                     </div>
@@ -674,7 +717,7 @@ const ProcessModal = ({
 
                   {/* Silicon Image */}
                   <div className="flex flex-col items-center">
-                    <div className="text-xs text-gray-500 mb-2">Silicon</div>
+                    <div className="mb-3 text-sm font-medium text-gray-600">Silicon</div>
                     {siliconImageUrl ? (
                       <img
                         src={siliconImageUrl}
@@ -688,47 +731,31 @@ const ProcessModal = ({
                       />
                     ) : null}
                     <div 
-                      className="w-32 h-40 bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center text-xs text-gray-400 rounded"
+                      className="flex flex-col items-center justify-center w-32 h-40 text-xs text-center text-gray-400 bg-gray-50 border border-dashed border-gray-300 rounded"
                       style={{ display: siliconImageUrl ? 'none' : 'flex' }}
                     >
-                      <div className="text-center">
+                      <div className="text-sm text-center">
                         {siliconImageUrl ? 'Image N/A' : 'Waiting for Image...'}
                       </div>
                     </div>
                   </div>
                   
                 </div>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Footer Content */}
-        <div className="p-6 flex-shrink-0">
-
-          {/* Stepper */}
-          <div className="mb-6 flex justify-center">
-            <div className="w-full max-w-4xl">
-              <UR2Stepper
-                stages={stages}
-                currentStage={currentStage}
-                isInterrupted={isInterrupted}
-              />
-            </div>
+        {/* Footer - Progress Bar (Desktop only) */}
+        <div className="hidden md:block p-3 md:p-4">
+          <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <span>Progress</span>
+            <span>{pct}%</span>
           </div>
-
-          {/* Progress Bar */}
-          <div>
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Progress</span>
-              <span>{pct}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
 
@@ -736,7 +763,10 @@ const ProcessModal = ({
 
       {/* Camera Capture Modal */}
       {showCameraModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={handleCameraBackdropClick}
+        >
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
             <h3 className="text-xl font-semibold mb-4">Capture Image - Sample {currentCameraCapture?.cycle}</h3>
             <div className="relative">
@@ -751,14 +781,7 @@ const ProcessModal = ({
             </div>
             <div className="flex gap-4 justify-end">
               <button
-                onClick={() => {
-                  const stream = videoRef.current?.srcObject;
-                  if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                  }
-                  setShowCameraModal(false);
-                  setCurrentCameraCapture(null);
-                }}
+                onClick={closeCameraModal}
                 className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg transition-colors"
               >
                 Cancel
