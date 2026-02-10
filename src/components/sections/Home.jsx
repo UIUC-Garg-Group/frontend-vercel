@@ -29,13 +29,11 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
   const [testResults, setTestResults] = useState({ aluminum: [], silicon: [] }); // Store real-time results
   
   const [processStages] = useState([
-    'Sample Preparation',
-    'Heat & Stirring',
-    'Dissolution',
-    'Filtration & Dilution',
-    'Camera Capture',
-    'Aluminum Concentration Analysis',
-    'Silicon Concentration Analysis',
+    'NaOH Transfer',
+    'Preparation',
+    'Transfer',
+    'Aluminum',
+    'Silicon',
   ]);
   const totalCycles = 5;
 
@@ -97,11 +95,11 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
 
       // Handle different status types
       if (run_status === 'cycle_start') {
-        // Reset progress for stages 2-5 when a new cycle starts
+        // Reset progress for stages 3-5 when a new cycle starts
         if (activeTestId === testId && showProcessModal) {
           setCurrentCycle(cycle);
-          setCurrentProcessStage(1); // Keep stage 1 completed, reset to start of cycle
-          addLog && addLog(`Starting cycle ${cycle}/${totalCycles} - Resetting progress for stages 2-5`);
+          setCurrentProcessStage(2); // Keep stages 1-2 completed, reset to start of cycle (stage 3)
+          addLog && addLog(`Starting cycle ${cycle}/${totalCycles} - Resetting progress for stages 3-5`);
         }
       }
       else if (run_status === 'completed') { //when test is fully completed
