@@ -34,6 +34,7 @@ const ProcessModal = ({
   const [waitStartTime, setWaitStartTime] = useState(null);
   const [remainingTime, setRemainingTime] = useState(600); // 10 minutes in seconds
   const [waitSkipped, setWaitSkipped] = useState(false);
+  const [filtrationConfirmed, setFiltrationConfirmed] = useState(false);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [currentCameraCapture, setCurrentCameraCapture] = useState(null);
   const [selectedSampleType, setSelectedSampleType] = useState('al'); // 'al' or 'si'
@@ -90,6 +91,16 @@ const ProcessModal = ({
       mqttService.client.publish('ur2/manual/wait_complete', JSON.stringify({
         timestamp: new Date().toISOString(),
         skipped: true
+      }));
+    }
+  };
+
+  // Handle filtration confirmation
+  const handleFiltrationConfirmed = () => {
+    setFiltrationConfirmed(true);
+    if (mqttService?.client?.connected) {
+      mqttService.client.publish('ur2/manual/filtration_confirmed', JSON.stringify({
+        timestamp: new Date().toISOString()
       }));
     }
   };
@@ -331,9 +342,10 @@ const ProcessModal = ({
   const isComplete = currentStage >= total;
   const pct = Math.max(0, Math.min(100, Math.round(isComplete ? 100 : rawPct)));
 
-  // Check if current stage (not viewing stage) is Heat & Stirring
+  // Check if current stage (not viewing stage) is Preparation (manual heat/stir/wait)
   const currentStageName = stages?.[currentStage] || '';
-  const isHeatStage = currentStageName === 'Heat & Stirring';
+  const isPreparationStage = currentStageName === 'Preparation';
+  const isTransferStage = currentStageName === 'Transfer';
   
   // Get viewing stage name for display
   const viewingStageName = stages?.[viewingStage] || '';
@@ -483,8 +495,8 @@ const ProcessModal = ({
         </div>
 
         {/* Notification Boxes - Manual Instructions & Camera Preview */}
-        {/* Manual Instructions for Heat & Stirring Stage - Compact version */}
-        {isHeatStage && !isComplete && (
+        {/* Manual Instructions for Preparation Stage */}
+        {isPreparationStage && !isComplete && (
           <div className="p-4 md:p-6 mb-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
@@ -550,6 +562,31 @@ const ProcessModal = ({
                       )}
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Filtration Confirmation for Transfer Stage */}
+          {isTransferStage && !isComplete && !filtrationConfirmed && (
+            <div className="p-4 md:p-6 mb-4 p-3 bg-amber-50 border border-amber-300 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    🔬
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-amber-900 mb-2">Manual Filtration Required</h4>
+                  <p className="text-xs text-amber-800 mb-3">
+                    Please complete the filtration process and click confirm when ready to proceed.
+                  </p>
+                  <button
+                    onClick={handleFiltrationConfirmed}
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded text-xs font-medium transition-colors"
+                  >
+                    ✓ Filtration Complete
+                  </button>
                 </div>
               </div>
             </div>
