@@ -442,14 +442,13 @@ const ProcessModal = ({
             {!isComplete && !isInterrupted && onEmergencyStop && (
               <button
                 onClick={() => {
-                  if (window.confirm('⚠️ EMERGENCY STOP\n\nThis will immediately halt ALL running processes on the RPI.\n\nAre you sure?')) {
+                  if (window.confirm('EMERGENCY STOP\n\nThis will immediately halt ALL running processes on the RPI.\n\nAre you sure?')) {
                     onEmergencyStop();
                   }
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg shadow-md hover:shadow-lg transition-all animate-pulse hover:animate-none"
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded transition-colors"
               >
-                <span className="text-lg">🛑</span>
-                <span>EMERGENCY STOP</span>
+                STOP
               </button>
             )}
             <button
