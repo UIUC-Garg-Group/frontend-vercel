@@ -127,7 +127,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
           setCurrentCycle(null);
         }
       } 
-      else if (run_status === 'failed' || run_status === 'error') { //when test fails or is stopped
+      else if (run_status === 'failed' || run_status === 'error' || run_status === 'stopped') {
         setActiveTests(prev => {
           const newMap = new Map(prev);
           newMap.delete(testId);
@@ -147,7 +147,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
         if (activeTestId === testId && showProcessModal) {
           setShowProcessModal(false);
           setActiveTestId(null);
-          addLog && addLog(`Test ${testId} failed: ${data.message || 'Unknown error'}`);
+          addLog && addLog(`Test ${testId} ${run_status}: ${data.message || 'Process ended'}`);
         }
       }
       else if (run_status === 'running') { // When a stage from current test is completed
