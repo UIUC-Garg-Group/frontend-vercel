@@ -35,7 +35,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
     'Aluminum',
     'Silicon',
   ]);
-  const totalCycles = 5;
+  const totalCycles = 1;
 
 
   // Function to update run status in database
@@ -524,6 +524,25 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
         waitingCameraPreview={waitingCameraPreview}
         activeTestId={activeTestId}
         onResultsUpdate={(results) => setTestResults(results)}
+        onEmergencyStop={() => {
+          if (activeTestId && mqttService?.client?.connected) {
+            // Send stop command to RPI via MQTT
+            mqttService.client.publish('ur2/test/init', JSON.stringify({
+              command: 'stop',
+              testId: activeTestId,
+              timestamp: new Date().toISOString()
+            }));
+            addLog && addLog(`🛑 EMERGENCY STOP sent for test ${activeTestId}`);
+            // Update local state
+            setActiveTests(prev => {
+              const next = new Map(prev);
+              next.delete(activeTestId);
+              return next;
+            });
+            updateRunStatus(activeTestId, 'stopped', currentProcessStage);
+            handleCloseProcessModal();
+          }
+        }}
       />
 
       {/* Confirmation Modal */}

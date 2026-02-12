@@ -21,7 +21,8 @@ const ProcessModal = ({
   isInterrupted = false,
   waitingCameraPreview = false,
   activeTestId = null,
-  onResultsUpdate = null  // Callback to pass results to parent
+  onResultsUpdate = null,  // Callback to pass results to parent
+  onEmergencyStop = null   // Emergency stop callback
 }) => {
   const [aluminumImageUrl, setAluminumImageUrl] = useState(null);
   const [siliconImageUrl, setSiliconImageUrl] = useState(null);
@@ -424,7 +425,7 @@ const ProcessModal = ({
             <div className="flex items-center gap-3 md:gap-4">
               <h2 className="text-lg md:text-xl font-semibold text-gray-900">{title}</h2>
               {currentCycle > 0 && (
-                <p className="text-sm text-gray-600">Sample {currentCycle} of 5</p>
+                <p className="text-sm text-gray-600">Sample {currentCycle}</p>
               )}
             </div>
             {viewingStage !== currentStage && (
@@ -436,12 +437,28 @@ const ProcessModal = ({
               </button>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Emergency Stop Button */}
+            {!isComplete && !isInterrupted && onEmergencyStop && (
+              <button
+                onClick={() => {
+                  if (window.confirm('⚠️ EMERGENCY STOP\n\nThis will immediately halt ALL running processes on the RPI.\n\nAre you sure?')) {
+                    onEmergencyStop();
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg shadow-md hover:shadow-lg transition-all animate-pulse hover:animate-none"
+              >
+                <span className="text-lg">🛑</span>
+                <span>EMERGENCY STOP</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Stage Navigation */}
