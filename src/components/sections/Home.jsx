@@ -63,6 +63,24 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
     }
   }, [addLog]);
 
+  // Function to save test results to database
+  const saveResults = useCallback(async (testId, results) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/runs/${testId}/results`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results }),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      addLog && addLog(`Results saved for test ${testId}`);
+      return true;
+    } catch (error) {
+      console.error('Error saving results:', error);
+      addLog && addLog(`Error saving results for test ${testId}: ${error.message}`);
+      return false;
+    }
+  }, [addLog]);
+
   ////////////////////////////////////////////////////////////////////////////////
   // Update MQTT connection status when prop changes
   useEffect(() => {
@@ -112,11 +130,16 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
         // Update run status in database
         await updateRunStatus(testId, run_status, run_stage);
         
+        // Save results to database
+        if (testResults.aluminum.length > 0 || testResults.silicon.length > 0) {
+          await saveResults(testId, testResults);
+        }
+        
         // Update runs status
         setRuns(prevRuns => 
           prevRuns.map(run => 
             run.trial_id === testId 
-              ? { ...run, run_status: run_status }
+              ? { ...run, run_status: run_status, results: testResults }
               : run
           )
         );
@@ -212,7 +235,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       setShowConfirmationModal(true);
       addLog && addLog(`Confirmation required for test ${testId}: ${message}`);
     });
-  }, [activeTestId, showProcessModal, processStages.length, addLog, updateRunStatus]);
+  }, [activeTestId, showProcessModal, processStages.length, addLog, updateRunStatus, saveResults, testResults]);
 
   // Handle confirmation response
   const handleConfirmation = (confirmed) => {

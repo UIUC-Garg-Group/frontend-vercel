@@ -36,6 +36,7 @@ const ProcessModal = ({
   const [remainingTime, setRemainingTime] = useState(600); // 10 minutes in seconds
   const [waitSkipped, setWaitSkipped] = useState(false);
   const [filtrationConfirmed, setFiltrationConfirmed] = useState(false);
+  const [dissolutionResults, setDissolutionResults] = useState([]);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [currentCameraCapture, setCurrentCameraCapture] = useState(null);
   const [selectedSampleType, setSelectedSampleType] = useState('al'); // 'al' or 'si'
@@ -259,6 +260,16 @@ const ProcessModal = ({
           setLatestImageMeta(meta);
           latestImageMetaRef.current = meta;  // Update ref immediately for raw image handler
           
+          // Handle dissolution_index message (sent after both AL + SI are done)
+          if (meta.dissolution_index != null) {
+            setDissolutionResults(prevResults => {
+              const newResults = [...prevResults, meta];
+              return newResults;
+            });
+            console.log('📷 Received dissolution index:', meta.dissolution_index);
+            return; // dissolution_index messages don't have images
+          }
+          
           // Append data to appropriate result array based on solution_type
           if (meta.solution_type === 'al') {
             setAluminumResults(prevResults => {
@@ -381,6 +392,7 @@ const ProcessModal = ({
         sample: index + 1,
         aluminum: aluminumResults[index] || null,
         silicon: siliconResults[index] || null,
+        dissolution_index: dissolutionResults[index]?.dissolution_index ?? null,
       })),
       summary: {
         aluminum: {
@@ -716,18 +728,21 @@ const ProcessModal = ({
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Sample</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum (μM)</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon (μM)</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Dissolution Index</th>
                         </tr>
                       </thead>
                       <tbody>
                         {Array.from({ length: Math.max(aluminumResults.length, siliconResults.length) }, (_, index) => {
                           const alData = aluminumResults[index];
                           const siData = siliconResults[index];
+                          const diData = dissolutionResults[index];
                           const sampleNumber = index + 1;
                           return (
                             <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                               <td className="py-3 px-3 md:px-4 text-gray-700 font-medium">{sampleNumber}</td>
                               <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(alData?.concentration)}</td>
                               <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(siData?.concentration)}</td>
+                              <td className="py-3 px-3 md:px-4 text-gray-600 font-semibold">{diData?.dissolution_index != null ? diData.dissolution_index : 'N/A'}</td>
                             </tr>
                           );
                         })}
