@@ -33,7 +33,7 @@ const ProcessModal = ({
   const [heatConfirmed, setHeatConfirmed] = useState(false);
   const [stirringConfirmed, setStirringConfirmed] = useState(false);
   const [waitStartTime, setWaitStartTime] = useState(null);
-  const [remainingTime, setRemainingTime] = useState(600); // 10 minutes in seconds
+  const [remainingTime, setRemainingTime] = useState(330); // 5.5 minutes in seconds
   const [waitSkipped, setWaitSkipped] = useState(false);
   const [filtrationConfirmed, setFiltrationConfirmed] = useState(false);
   const [dissolutionResults, setDissolutionResults] = useState([]);
@@ -215,13 +215,13 @@ const ProcessModal = ({
     };
   }, [isOpen]);
 
-  // Countdown timer for 10-minute wait
+  // Countdown timer for 5.5-minute wait
   useEffect(() => {
     if (!waitStartTime || waitSkipped) return;
 
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - waitStartTime) / 1000);
-      const remaining = Math.max(0, 600 - elapsed);
+      const remaining = Math.max(0, 330 - elapsed);
       setRemainingTime(remaining);
 
       if (remaining === 0) {
@@ -544,7 +544,7 @@ const ProcessModal = ({
                         onClick={handleHeatConfirmed}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-medium transition-colors"
                       >
-                        ✓ Heating Complete
+                        ✓ Is Heating Complete ?
                       </button>
                     </div>
                   )}
@@ -557,7 +557,7 @@ const ProcessModal = ({
                       <p className="text-xs text-blue-800">
                         <strong>Step 3:</strong> Start stirring to <strong>0.56 rpm</strong>
                       </p>
-                      <p className="text-xs text-amber-700">⏱️ System will wait 10 minutes after confirmation</p>
+                      <p className="text-xs text-amber-700">⏱️ System will wait 5.5 minutes after confirmation</p>
                       <button
                         onClick={handleStirringConfirmed}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-medium transition-colors"
