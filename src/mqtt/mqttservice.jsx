@@ -56,7 +56,8 @@ class MQTTService {
             },
             // Publish via backend
             publish: (topic, message) => {
-                self.socket.emit('mqtt:publish', { topic, message });
+                const parsed = typeof message === 'string' ? JSON.parse(message) : message;
+                self.socket.emit('mqtt:publish', { topic, message: parsed });
             }
         };
     }
@@ -216,6 +217,20 @@ class MQTTService {
         });
         
         console.log('📤 Sent confirmation for test:', testId, 'confirmed:', confirmed);
+        return true;
+    }
+
+    sendImageAnalysisCommand(analysisId) {
+        if (!this.socket || !this.socketConnected) {
+            console.error('Cannot send image analysis command, not connected to backend');
+            return false;
+        }
+        
+        this.socket.emit('mqtt:imageAnalysis', {
+            analysisId: analysisId
+        });
+        
+        console.log('📤 Sent image analysis command:', analysisId);
         return true;
     }
 
