@@ -211,10 +211,24 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
           setCurrentProcessStage(stageNumber);
         }
       }
+      else if (run_status === 'image_analysis_started') {
+        // Standalone image analysis started — open the ProcessModal
+        addLog && addLog(`Image analysis started: ${testId}`);
+        setActiveTestId(testId);
+        setCurrentProcessStage(0);
+        setCurrentCycle(1);
+        setShowProcessModal(true);
+      }
       else if (run_status === 'waiting_camera_preview') {
         // Camera preview is active on RPI, waiting for user confirmation
         addLog && addLog(`Camera preview active for test ${testId} - waiting for confirmation`);
-        if (activeTestId === testId && showProcessModal) {
+        // If modal isn't open yet (e.g. image analysis), open it
+        if (!showProcessModal) {
+          setActiveTestId(testId);
+          setShowProcessModal(true);
+        }
+        if (activeTestId === testId || !activeTestId) {
+          setActiveTestId(testId);
           setWaitingCameraPreview(true);
           if (data.cycle) {
             setCurrentCycle(data.cycle);
@@ -225,6 +239,13 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
         // Camera captured successfully, clear preview state
         setWaitingCameraPreview(false);
         addLog && addLog(`Camera captured image for test ${testId}`);
+      }
+      else if (run_status === 'image_analysis_completed') {
+        setWaitingCameraPreview(false);
+        if (activeTestId === testId && showProcessModal) {
+          setCurrentProcessStage(processStages.length);
+        }
+        addLog && addLog(`Image analysis completed: ${testId} - ${data.message || ''}`);
       }
     });
 

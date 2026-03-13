@@ -11,6 +11,8 @@ import mqttService from './mqtt/mqttservice'; // Import the service
 import CreateTestModal from './components/ui/CreateTestModal';
 
 function Dashboard({ user, onLogout, activePage, setActivePage, logs, addLog, mqttConnected, onConnectMqtt, onDisconnectMqtt, mqttConnecting, showCreateModal, setShowCreateModal }) {
+  const [showSampleTypeSelector, setShowSampleTypeSelector] = useState(false);
+
   const handleCreateClick = () => {
     if (!mqttConnected) {
       alert('Please connect with the device first');
@@ -18,6 +20,22 @@ function Dashboard({ user, onLogout, activePage, setActivePage, logs, addLog, mq
       return;
     }
     setShowCreateModal(true);
+  };
+
+  const handleImageAnalysisClick = () => {
+    if (!mqttConnected) {
+      alert('Please connect with the device first');
+      addLog && addLog('Cannot run image analysis - MQTT not connected');
+      return;
+    }
+    setShowSampleTypeSelector(true);
+  };
+
+  const startImageAnalysis = (sampleType) => {
+    setShowSampleTypeSelector(false);
+    const analysisId = `img-analysis-${Date.now()}`;
+    mqttService.sendImageAnalysisCommand(analysisId, sampleType);
+    addLog && addLog(`Starting ${sampleType.toUpperCase()} image analysis: ${analysisId}`);
   };
 
   return (
@@ -46,25 +64,43 @@ function Dashboard({ user, onLogout, activePage, setActivePage, logs, addLog, mq
                   </svg>
                   Create
                 </button>
-                <button
-                  onClick={() => {
-                    if (!mqttConnected) {
-                      alert('Please connect with the device first');
-                      addLog && addLog('Cannot run image analysis - MQTT not connected');
-                      return;
-                    }
-                    const analysisId = `img-analysis-${Date.now()}`;
-                    mqttService.sendImageAnalysisCommand(analysisId);
-                    addLog && addLog(`Starting image analysis: ${analysisId}`);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] hover:bg-[#E2E8F0] rounded-md transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Image Analysis
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={handleImageAnalysisClick}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#334155] bg-[#F1F5F9] border border-[#CBD5E1] hover:bg-[#E2E8F0] rounded-md transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Image Analysis
+                  </button>
+                  {showSampleTypeSelector && (
+                    <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 min-w-[200px]">
+                      <p className="text-xs font-medium text-gray-500 mb-2">Select sample type:</p>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => startImageAnalysis('al')}
+                          className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                        >
+                          Aluminum
+                        </button>
+                        <button
+                          onClick={() => startImageAnalysis('si')}
+                          className="w-full px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+                        >
+                          Silicon
+                        </button>
+                        <button
+                          onClick={() => setShowSampleTypeSelector(false)}
+                          className="w-full px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {mqttConnected ? (
                   <button
                     onClick={onDisconnectMqtt}

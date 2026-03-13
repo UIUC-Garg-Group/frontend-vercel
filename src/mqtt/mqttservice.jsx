@@ -220,17 +220,18 @@ class MQTTService {
         return true;
     }
 
-    sendImageAnalysisCommand(analysisId) {
+    sendImageAnalysisCommand(analysisId, sampleType = 'al') {
         if (!this.socket || !this.socketConnected) {
             console.error('Cannot send image analysis command, not connected to backend');
             return false;
         }
-        
+
         this.socket.emit('mqtt:imageAnalysis', {
-            analysisId: analysisId
+            analysisId: analysisId,
+            sampleType: sampleType
         });
-        
-        console.log('📤 Sent image analysis command:', analysisId);
+
+        console.log('📤 Sent image analysis command:', analysisId, 'sampleType:', sampleType);
         return true;
     }
 
