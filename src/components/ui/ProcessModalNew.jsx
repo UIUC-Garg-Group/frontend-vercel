@@ -271,24 +271,25 @@ const ProcessModal = ({
           }
           
           // Append data to appropriate result array based on solution_type
-          if (meta.solution_type === 'al') {
-            setAluminumResults(prevResults => {
-              const newResults = [...prevResults, meta];
-              // Notify parent of updated results
-              if (onResultsUpdate) {
-                onResultsUpdate({ aluminum: newResults, silicon: siliconResults });
-              }
-              return newResults;
-            });
-          } else if (meta.solution_type === 'si') {
-            setSiliconResults(prevResults => {
-              const newResults = [...prevResults, meta];
-              // Notify parent of updated results
-              if (onResultsUpdate) {
-                onResultsUpdate({ aluminum: aluminumResults, silicon: newResults });
-              }
-              return newResults;
-            });
+          // Only add to results if it has concentration data (skip camera preview messages)
+          if (meta.concentration != null) {
+            if (meta.solution_type === 'al') {
+              setAluminumResults(prevResults => {
+                const newResults = [...prevResults, meta];
+                if (onResultsUpdate) {
+                  onResultsUpdate({ aluminum: newResults, silicon: siliconResults });
+                }
+                return newResults;
+              });
+            } else if (meta.solution_type === 'si') {
+              setSiliconResults(prevResults => {
+                const newResults = [...prevResults, meta];
+                if (onResultsUpdate) {
+                  onResultsUpdate({ aluminum: aluminumResults, silicon: newResults });
+                }
+                return newResults;
+              });
+            }
           }
           
           console.log('📷 Received image metadata:', meta);
@@ -728,6 +729,7 @@ const ProcessModal = ({
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Sample</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum (μM)</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon (μM)</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">RGB</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Dissolution Index</th>
                         </tr>
                       </thead>
@@ -742,6 +744,14 @@ const ProcessModal = ({
                               <td className="py-3 px-3 md:px-4 text-gray-700 font-medium">{sampleNumber}</td>
                               <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(alData?.concentration)}</td>
                               <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(siData?.concentration)}</td>
+                              <td className="py-3 px-3 md:px-4 text-gray-600 text-xs font-mono">
+                                {(() => {
+                                  const rgb = alData?.rgb || siData?.rgb;
+                                  if (!rgb) return 'N/A';
+                                  const [r, g, b] = rgb;
+                                  return `(${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`;
+                                })()}
+                              </td>
                               <td className="py-3 px-3 md:px-4 text-gray-600 font-semibold">{diData?.dissolution_index != null ? diData.dissolution_index : 'N/A'}</td>
                             </tr>
                           );
