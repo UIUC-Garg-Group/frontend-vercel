@@ -95,6 +95,14 @@ export async function analyzeImage(file, solutionType = 'al', roiParams = {}) {
   const pixelCount = innerData.width * innerData.height;
   const rgb = meanRgbNormalized(innerData.data, pixelCount);
 
+  // Debug: log values to compare with RPi output
+  console.log(`[ImageAnalysis] ${solutionType.toUpperCase()} debug:`);
+  console.log(`  Image: ${bitmap.width}x${bitmap.height}`);
+  console.log(`  ROI: x=${roi.x}, y=${roi.y}, w=${roi.w}, h=${roi.h}`);
+  console.log(`  Inner crop: x0=${inner.x0}, y0=${inner.y0}, side=${inner.side} (absolute: x=${roi.x + inner.x0}, y=${roi.y + inner.y0})`);
+  console.log(`  Mean RGB (0-255): R=${(rgb[0]*255).toFixed(2)}, G=${(rgb[1]*255).toFixed(2)}, B=${(rgb[2]*255).toFixed(2)}`);
+  console.log(`  Mean RGB (norm):  R=${rgb[0].toFixed(6)}, G=${rgb[1].toFixed(6)}, B=${rgb[2].toFixed(6)}`);
+
   // Compute concentration
   const conc = getConcentration(rgb, solutionType);
 
