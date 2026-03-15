@@ -61,26 +61,65 @@ export function meanRgbNormalized(pixelData, pixelCount) {
   ];
 }
 
+// Calibration constants from deployment_rpi.py
+// calibration curve - AI: SR images 03012026 | Si: SR images 03082026 | camera based analysis
+export const CALIBRATION_AL = { slope: 793.61, intercept: -1069.3 };
+export const CALIBRATION_SI = { slope: 7593, intercept: -1714.5 };
+
 /**
- * Compute concentration from normalized RGB.
- * Port of _get_concentration() in image_pipeline.py
+ * Compute Aluminum Color Index from normalized RGB.
+ * Port of calculate_ai_ci() in camera_index.py
+ * Formula: log((3*R + B) / G)
+ */
+export function calculateAlCi(r, g, b) {
+  if (g <= 0) throw new Error('g_norm must be > 0 for AI CI calculation');
+  return Math.log((3.0 * r + b) / g);
+}
+
+/**
+ * Compute Silicon Color Index from normalized RGB.
+ * Port of calculate_si_ci() in camera_index.py
+ * Formula: 1 - (0.299*R + 0.587*G + 0.114*B)
+ */
+export function calculateSiCi(r, g, b) {
+  return 1.0 - (0.299 * r + 0.587 * g + 0.114 * b);
+}
+
+/**
+ * Apply calibration: CI * slope + intercept
+ * Port of apply_calibration() in camera_index.py
+ */
+export function applyCalibration(ciValue, calibration) {
+  return ciValue * calibration.slope + calibration.intercept;
+}
+
+/**
+ * Compute concentration from normalized RGB using color index + calibration.
+ * Matches the full RPi pipeline: camera_index.py formulas + deployment_rpi.py calibration constants.
  *
  * @param {[number, number, number]} rgb - normalized [r, g, b]
  * @param {'al'|'si'} solutionType
- * @returns {number} concentration
+ * @returns {number} concentration in μM
  */
 export function getConcentration(rgb, solutionType) {
-  const [r, , b] = rgb;
+  const [r, g, b] = rgb;
   const st = (solutionType || '').toLowerCase();
-  if (st === 'al') return 0.25 * (3 * r + b);
-  if (st === 'si') return b;
+  if (st === 'al') {
+    const ci = calculateAlCi(r, g, b);
+    return applyCalibration(ci, CALIBRATION_AL);
+  }
+  if (st === 'si') {
+    const ci = calculateSiCi(r, g, b);
+    return applyCalibration(ci, CALIBRATION_SI);
+  }
   throw new Error("solutionType must be 'al' or 'si'");
 }
 
 /**
  * Compute dissolution index from aluminum and silicon concentrations.
- * Formula: 1.54 * [Al] + [Si]
+ * Port of calculate_dissolution_index() in camera_index.py
+ * Formula: round(1.54 * [Al] + [Si])
  */
 export function getDissolutionIndex(alConcentration, siConcentration) {
-  return 1.54 * alConcentration + siConcentration;
+  return Math.round(1.54 * alConcentration + siConcentration);
 }
