@@ -1,23 +1,33 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FlaskConical, Loader2, Download, Trash2 } from 'lucide-react';
 import { analyzeImage } from '../../utils/imageAnalysisRunner';
+import { getDissolutionIndex } from '../../utils/imageAnalysis';
 
 export default function ImageAnalysisPage() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [solutionType, setSolutionType] = useState('both');
+  const [solutionType, setSolutionType] = useState('al');
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
-  const [results, setResults] = useState([]);
+  const [alResult, setAlResult] = useState(null);
+  const [siResult, setSiResult] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // Compute dissolution index when both results exist
+  const dissolutionIndex = (alResult && siResult)
+    ? getDissolutionIndex(alResult.concentration, siResult.concentration)
+    : null;
+
+  // Latest result for image display
+  const latestResult = solutionType === 'al' ? alResult : siResult;
 
   // Cleanup object URLs on unmount
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
-      results.forEach((r) => {
-        if (r.outerCropUrl) URL.revokeObjectURL(r.outerCropUrl);
-        if (r.innerCropUrl) URL.revokeObjectURL(r.innerCropUrl);
+      [alResult, siResult].forEach((r) => {
+        if (r?.outerCropUrl) URL.revokeObjectURL(r.outerCropUrl);
+        if (r?.innerCropUrl) URL.revokeObjectURL(r.innerCropUrl);
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,7 +56,19 @@ export default function ImageAnalysisPage() {
     setError(null);
     try {
       const result = await analyzeImage(uploadedFile, solutionType);
-      setResults((prev) => [...prev, result]);
+      if (solutionType === 'al') {
+        setAlResult((prev) => {
+          if (prev?.outerCropUrl) URL.revokeObjectURL(prev.outerCropUrl);
+          if (prev?.innerCropUrl) URL.revokeObjectURL(prev.innerCropUrl);
+          return result;
+        });
+      } else {
+        setSiResult((prev) => {
+          if (prev?.outerCropUrl) URL.revokeObjectURL(prev.outerCropUrl);
+          if (prev?.innerCropUrl) URL.revokeObjectURL(prev.innerCropUrl);
+          return result;
+        });
+      }
     } catch (err) {
       setError(err.message || 'Analysis failed');
     } finally {
@@ -55,26 +77,21 @@ export default function ImageAnalysisPage() {
   }, [uploadedFile, solutionType]);
 
   const handleClearResults = useCallback(() => {
-    results.forEach((r) => {
-      if (r.outerCropUrl) URL.revokeObjectURL(r.outerCropUrl);
-      if (r.innerCropUrl) URL.revokeObjectURL(r.innerCropUrl);
+    [alResult, siResult].forEach((r) => {
+      if (r?.outerCropUrl) URL.revokeObjectURL(r.outerCropUrl);
+      if (r?.innerCropUrl) URL.revokeObjectURL(r.innerCropUrl);
     });
-    setResults([]);
-  }, [results]);
+    setAlResult(null);
+    setSiResult(null);
+  }, [alResult, siResult]);
 
   const handleExportJSON = useCallback(() => {
     const exportData = {
       source: 'manual_upload',
       exportedAt: new Date().toISOString(),
-      totalSamples: results.length,
-      results: results.map((r, i) => ({
-        sample: i + 1,
-        aluminum: r.solutionType === 'both' ? r.aluminum : (r.solutionType === 'al' ? { concentration: r.concentration, rgb: r.rgb } : null),
-        silicon: r.solutionType === 'both' ? r.silicon : (r.solutionType === 'si' ? { concentration: r.concentration, rgb: r.rgb } : null),
-        dissolution_index: r.dissolutionIndex ?? null,
-        sourceImage: r.sourceImage,
-        timestamp: r.timestamp,
-      })),
+      aluminum: alResult ? { concentration: alResult.concentration, rgb: alResult.rgb, sourceImage: alResult.sourceImage, timestamp: alResult.timestamp } : null,
+      silicon: siResult ? { concentration: siResult.concentration, rgb: siResult.rgb, sourceImage: siResult.sourceImage, timestamp: siResult.timestamp } : null,
+      dissolution_index: dissolutionIndex,
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -86,19 +103,18 @@ export default function ImageAnalysisPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [results]);
+  }, [alResult, siResult, dissolutionIndex]);
 
   const formatConcentration = (value) => {
     return value != null ? parseFloat(value).toFixed(3) : 'N/A';
   };
 
-  // Latest result for image display
-  const latestResult = results.length > 0 ? results[results.length - 1] : null;
+  const hasResults = alResult || siResult;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <h1 className="text-2xl font-semibold text-gray-900">Image Analysis</h1>
-      <p className="text-sm text-gray-500">Upload an image to run the same ROI and concentration analysis that runs on the Raspberry Pi.</p>
+      <p className="text-sm text-gray-500">Upload an image to run the same ROI and concentration analysis that runs on the Raspberry Pi. Analyze Aluminum and Silicon separately, then dissolution index is calculated automatically.</p>
 
       {/* Upload + Controls Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -140,26 +156,36 @@ export default function ImageAnalysisPage() {
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 block">Solution Type</label>
             <div className="flex gap-1">
-              {[
-                { value: 'al', label: 'Al', color: 'blue' },
-                { value: 'si', label: 'Si', color: 'green' },
-                { value: 'both', label: 'Both', color: 'purple' },
-              ].map(({ value, label, color }) => (
-                <button
-                  key={value}
-                  onClick={() => setSolutionType(value)}
-                  className={`flex-1 py-2 px-2 rounded-lg text-sm font-medium transition-colors ${
-                    solutionType === value
-                      ? `bg-${color}-600 text-white`
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={solutionType === value ? {
-                    backgroundColor: color === 'blue' ? '#2563eb' : color === 'green' ? '#16a34a' : '#9333ea'
-                  } : {}}
-                >
-                  {label}
-                </button>
-              ))}
+              <button
+                onClick={() => setSolutionType('al')}
+                className={`flex-1 py-2 px-2 rounded-lg text-sm font-medium transition-colors ${
+                  solutionType === 'al' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                style={solutionType === 'al' ? { backgroundColor: '#2563eb' } : {}}
+              >
+                Aluminum
+              </button>
+              <button
+                onClick={() => setSolutionType('si')}
+                className={`flex-1 py-2 px-2 rounded-lg text-sm font-medium transition-colors ${
+                  solutionType === 'si' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                style={solutionType === 'si' ? { backgroundColor: '#16a34a' } : {}}
+              >
+                Silicon
+              </button>
+            </div>
+          </div>
+
+          {/* Status indicators */}
+          <div className="text-xs text-gray-500 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${alResult ? 'bg-blue-500' : 'bg-gray-300'}`} />
+              Aluminum: {alResult ? formatConcentration(alResult.concentration) : 'Not analyzed'}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${siResult ? 'bg-green-500' : 'bg-gray-300'}`} />
+              Silicon: {siResult ? formatConcentration(siResult.concentration) : 'Not analyzed'}
             </div>
           </div>
 
@@ -174,7 +200,7 @@ export default function ImageAnalysisPage() {
             ) : (
               <FlaskConical className="w-5 h-5" />
             )}
-            {analyzing ? 'Analyzing...' : 'Analyze'}
+            {analyzing ? 'Analyzing...' : `Analyze ${solutionType === 'al' ? 'Aluminum' : 'Silicon'}`}
           </button>
 
           {error && (
@@ -184,7 +210,7 @@ export default function ImageAnalysisPage() {
       </div>
 
       {/* Results Section */}
-      {results.length > 0 && (
+      {hasResults && (
         <div className="flex flex-col gap-6 md:grid md:grid-cols-2">
           {/* Results Table — Left Side */}
           <div className="flex flex-col">
@@ -211,32 +237,37 @@ export default function ImageAnalysisPage() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-white">
                   <tr className="border-b-2 border-gray-200">
-                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Sample</th>
-                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum</th>
-                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon</th>
+                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Type</th>
+                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Concentration</th>
                     <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">RGB</th>
-                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Dissolution Index</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, index) => {
-                    const alConc = r.solutionType === 'both' ? r.aluminum?.concentration : (r.solutionType === 'al' ? r.concentration : null);
-                    const siConc = r.solutionType === 'both' ? r.silicon?.concentration : (r.solutionType === 'si' ? r.concentration : null);
-                    const rgb = r.rgb;
-                    return (
-                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-3 md:px-4 text-gray-700 font-medium">{index + 1}</td>
-                        <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(alConc)}</td>
-                        <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(siConc)}</td>
-                        <td className="py-3 px-3 md:px-4 text-gray-600 text-xs font-mono">
-                          {rgb ? `(${rgb[0].toFixed(3)}, ${rgb[1].toFixed(3)}, ${rgb[2].toFixed(3)})` : 'N/A'}
-                        </td>
-                        <td className="py-3 px-3 md:px-4 text-gray-600 font-semibold">
-                          {r.dissolutionIndex != null ? r.dissolutionIndex.toFixed(3) : 'N/A'}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {alResult && (
+                    <tr className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-3 md:px-4 text-gray-700 font-medium">Aluminum</td>
+                      <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(alResult.concentration)}</td>
+                      <td className="py-3 px-3 md:px-4 text-gray-600 text-xs font-mono">
+                        ({alResult.rgb[0].toFixed(3)}, {alResult.rgb[1].toFixed(3)}, {alResult.rgb[2].toFixed(3)})
+                      </td>
+                    </tr>
+                  )}
+                  {siResult && (
+                    <tr className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-3 md:px-4 text-gray-700 font-medium">Silicon</td>
+                      <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(siResult.concentration)}</td>
+                      <td className="py-3 px-3 md:px-4 text-gray-600 text-xs font-mono">
+                        ({siResult.rgb[0].toFixed(3)}, {siResult.rgb[1].toFixed(3)}, {siResult.rgb[2].toFixed(3)})
+                      </td>
+                    </tr>
+                  )}
+                  {dissolutionIndex != null && (
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <td className="py-3 px-3 md:px-4 text-gray-700 font-semibold">Dissolution Index</td>
+                      <td className="py-3 px-3 md:px-4 text-gray-700 font-semibold">{dissolutionIndex}</td>
+                      <td className="py-3 px-3 md:px-4 text-gray-400 text-xs">—</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

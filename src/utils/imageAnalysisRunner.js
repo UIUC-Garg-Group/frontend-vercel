@@ -21,7 +21,6 @@ import {
   getInnerCropCoords,
   meanRgbNormalized,
   getConcentration,
-  getDissolutionIndex,
   DEFAULT_ROI,
   DEFAULT_CROP_FRAC,
   DEFAULT_Y_SHIFT_FRAC,
@@ -129,18 +128,9 @@ export async function analyzeImage(file, solutionType = 'both', roiParams = {}) 
     imageHeight: img.naturalHeight,
   };
 
-  if (solutionType === 'both') {
-    const alConc = getConcentration(rgb, 'al');
-    const siConc = getConcentration(rgb, 'si');
-    result.solutionType = 'both';
-    result.aluminum = { concentration: alConc, rgb };
-    result.silicon = { concentration: siConc, rgb };
-    result.dissolutionIndex = getDissolutionIndex(alConc, siConc);
-  } else {
-    const conc = getConcentration(rgb, solutionType);
-    result.solutionType = solutionType;
-    result.concentration = conc;
-  }
+  const conc = getConcentration(rgb, solutionType);
+  result.solutionType = solutionType;
+  result.concentration = conc;
 
   return result;
 }
