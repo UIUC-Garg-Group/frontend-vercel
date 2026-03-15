@@ -5,7 +5,7 @@
  */
 
 // Default ROI coordinates matching the fixed cuvette position on the RPi camera
-export const DEFAULT_ROI = { x: 2144, y: 959, w: 392, h: 1296 };
+export const DEFAULT_ROI = { x: 2149, y: 959, w: 392, h: 1296 };
 export const DEFAULT_CROP_FRAC = 0.25;
 export const DEFAULT_Y_SHIFT_FRAC = 4.0;
 
