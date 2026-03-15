@@ -27,15 +27,17 @@ import {
 } from './imageAnalysis';
 
 /**
- * Convert an ImageData object to an object URL (for displaying in <img>).
+ * Crop a region from a source canvas using drawImage (preserves color pipeline).
+ * Unlike getImageData→putImageData→toBlob which double-applies color management,
+ * drawImage keeps the same single conversion as the original image.
  */
-function imageDataToObjectUrl(imageData) {
+function cropToObjectUrl(sourceCanvas, sx, sy, sw, sh) {
   return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = imageData.width;
-    canvas.height = imageData.height;
-    canvas.getContext('2d').putImageData(imageData, 0, 0);
-    canvas.toBlob((blob) => {
+    const crop = document.createElement('canvas');
+    crop.width = sw;
+    crop.height = sh;
+    crop.getContext('2d').drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+    crop.toBlob((blob) => {
       resolve(URL.createObjectURL(blob));
     }, 'image/png');
   });
@@ -44,24 +46,20 @@ function imageDataToObjectUrl(imageData) {
 /**
  * Run the full image analysis pipeline in the browser.
  *
- * Uses createImageBitmap with colorSpaceConversion: 'none' to bypass
- * browser ICC profile / color management — ensures raw pixel values
- * match what PIL/OpenCV reads on the RPi.
- *
  * @param {File} file - uploaded image file
  * @param {'al'|'si'} solutionType
  * @param {object} [roiParams] - optional ROI overrides { x, y, w, h, cropFrac, yShiftFrac }
  * @returns {Promise<object>} analysis result
  */
 export async function analyzeImage(file, solutionType = 'al', roiParams = {}) {
-  // Load image WITHOUT color space conversion (raw pixels, like PIL/OpenCV)
+  // Load image bypassing browser color management (raw pixels, like PIL/OpenCV)
   const bitmap = await createImageBitmap(file, { colorSpaceConversion: 'none' });
 
   // Draw full image onto canvas
   const canvas = document.createElement('canvas');
   canvas.width = bitmap.width;
   canvas.height = bitmap.height;
-  const ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(bitmap, 0, 0);
 
   // Clamp ROI to image bounds
@@ -74,49 +72,41 @@ export async function analyzeImage(file, solutionType = 'al', roiParams = {}) {
     canvas.height
   );
 
-  // Extract outer ROI
-  const outerData = ctx.getImageData(roi.x, roi.y, roi.w, roi.h);
-
-  // Draw outer ROI onto temp canvas for inner crop extraction
-  const roiCanvas = document.createElement('canvas');
-  roiCanvas.width = roi.w;
-  roiCanvas.height = roi.h;
-  const roiCtx = roiCanvas.getContext('2d');
-  roiCtx.putImageData(outerData, 0, 0);
-
-  // Compute inner crop coordinates
+  // Compute inner crop coordinates (relative to ROI)
   const cropFrac = roiParams.cropFrac ?? DEFAULT_CROP_FRAC;
   const yShiftFrac = roiParams.yShiftFrac ?? DEFAULT_Y_SHIFT_FRAC;
   const inner = getInnerCropCoords(roi.w, roi.h, cropFrac, yShiftFrac);
 
-  // Extract inner crop pixel data
-  const innerData = roiCtx.getImageData(inner.x0, inner.y0, inner.side, inner.side);
+  // Get raw pixel data for inner crop (for computation — uses getImageData)
+  const innerData = ctx.getImageData(
+    roi.x + inner.x0,
+    roi.y + inner.y0,
+    inner.side,
+    inner.side
+  );
 
-  // Generate display URLs for both crops
+  // Generate display URLs using drawImage (avoids double color management)
   const [outerCropUrl, innerCropUrl] = await Promise.all([
-    imageDataToObjectUrl(outerData),
-    imageDataToObjectUrl(innerData),
+    cropToObjectUrl(canvas, roi.x, roi.y, roi.w, roi.h),
+    cropToObjectUrl(canvas, roi.x + inner.x0, roi.y + inner.y0, inner.side, inner.side),
   ]);
 
-  // Compute mean RGB
+  // Compute mean RGB from raw pixels
   const pixelCount = innerData.width * innerData.height;
   const rgb = meanRgbNormalized(innerData.data, pixelCount);
 
-  // Compute concentrations
-  const timestamp = new Date().toISOString();
-  const result = {
+  // Compute concentration
+  const conc = getConcentration(rgb, solutionType);
+
+  return {
+    solutionType,
+    concentration: conc,
     rgb,
     outerCropUrl,
     innerCropUrl,
-    timestamp,
+    timestamp: new Date().toISOString(),
     sourceImage: file.name,
     imageWidth: bitmap.width,
     imageHeight: bitmap.height,
   };
-
-  const conc = getConcentration(rgb, solutionType);
-  result.solutionType = solutionType;
-  result.concentration = conc;
-
-  return result;
 }
