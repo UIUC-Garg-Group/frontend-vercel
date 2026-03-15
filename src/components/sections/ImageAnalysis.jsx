@@ -212,8 +212,8 @@ export default function ImageAnalysisPage() {
                 <thead className="sticky top-0 bg-white">
                   <tr className="border-b-2 border-gray-200">
                     <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Sample</th>
-                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum (μM)</th>
-                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon (μM)</th>
+                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum</th>
+                    <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon</th>
                     <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">RGB</th>
                     <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Dissolution Index</th>
                   </tr>

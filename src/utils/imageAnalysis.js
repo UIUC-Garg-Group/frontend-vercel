@@ -65,6 +65,7 @@ export function meanRgbNormalized(pixelData, pixelCount) {
 // calibration curve - AI: SR images 03012026 | Si: SR images 03082026 | camera based analysis
 export const CALIBRATION_AL = { slope: 793.61, intercept: -1069.3 };
 export const CALIBRATION_SI = { slope: 7593, intercept: -1714.5 };
+export const DILUTION_FACTOR = 200;
 
 /**
  * Compute Aluminum Color Index from normalized RGB.
@@ -99,18 +100,18 @@ export function applyCalibration(ciValue, calibration) {
  *
  * @param {[number, number, number]} rgb - normalized [r, g, b]
  * @param {'al'|'si'} solutionType
- * @returns {number} concentration in μM
+ * @returns {number} concentration (calibrated * dilution factor)
  */
 export function getConcentration(rgb, solutionType) {
   const [r, g, b] = rgb;
   const st = (solutionType || '').toLowerCase();
   if (st === 'al') {
     const ci = calculateAlCi(r, g, b);
-    return applyCalibration(ci, CALIBRATION_AL);
+    return applyCalibration(ci, CALIBRATION_AL) * DILUTION_FACTOR;
   }
   if (st === 'si') {
     const ci = calculateSiCi(r, g, b);
-    return applyCalibration(ci, CALIBRATION_SI);
+    return applyCalibration(ci, CALIBRATION_SI) * DILUTION_FACTOR;
   }
   throw new Error("solutionType must be 'al' or 'si'");
 }
