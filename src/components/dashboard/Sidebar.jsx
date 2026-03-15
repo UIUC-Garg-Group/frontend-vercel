@@ -1,10 +1,11 @@
 import React from 'react';
-import { Home, Settings, HelpCircle, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
+import { Home, Settings, HelpCircle, ScanSearch, ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
 
 export default function Navbar({ activePage, setActivePage, user, onLogout }) {
   const [collapsed, setCollapsed] = React.useState(false);
   const navItems = [
     { name: 'home', icon: <Home />, label: 'Home' },
+    { name: 'image-analysis', icon: <ScanSearch />, label: 'Image Analysis' },
     { name: 'settings', icon: <Settings />, label: 'Settings' },
     { name: 'help', icon: <HelpCircle />, label: 'Help' }
   ];
