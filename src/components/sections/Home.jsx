@@ -27,7 +27,15 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
   const [currentCycle, setCurrentCycle] = useState(1);
   const [waitingCameraPreview, setWaitingCameraPreview] = useState(false); // Track camera preview state
   const [testResults, setTestResults] = useState({ aluminum: [], silicon: [] }); // Store real-time results
-  
+
+  // Refs to avoid stale closures in the MQTT callback
+  const activeTestIdRef = useRef(activeTestId);
+  const showProcessModalRef = useRef(showProcessModal);
+  const testResultsRef = useRef(testResults);
+  activeTestIdRef.current = activeTestId;
+  showProcessModalRef.current = showProcessModal;
+  testResultsRef.current = testResults;
+
   const [processStages] = useState([
     'NaOH Transfer',
     'Preparation',
@@ -100,24 +108,25 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
   }, []);
 ////////////////////////////////////////////////////////////////////////////////
   // Separate useEffect for setting up stage update callback
+  // Uses refs to avoid stale closures — this callback is registered ONCE
   useEffect(() => {
     // Set up stage update callback
     mqttService.setStageUpdateCallback(async (data) => {
-  
+
       const testId = data.testId;
       const run_status = data.run_status;
       const run_stage = data.run_stage;
       const cycle = data.cycle;
 
-      addLog && addLog(`Stage update received: Test ${testId}, Status ${run_status}, Stage ${run_stage}${cycle ? `, Cycle ${cycle}` : ''}`);
+      addLog(`Stage update received: Test ${testId}, Status ${run_status}, Stage ${run_stage}${cycle ? `, Cycle ${cycle}` : ''}`);
 
       // Handle different status types
       if (run_status === 'cycle_start') {
         // Reset progress for stages 3-5 when a new cycle starts
-        if (activeTestId === testId && showProcessModal) {
+        if (activeTestIdRef.current === testId && showProcessModalRef.current) {
           setCurrentCycle(cycle);
           setCurrentProcessStage(2); // Keep stages 1-2 completed, reset to start of cycle (stage 3)
-          addLog && addLog(`Starting cycle ${cycle}/${totalCycles} - Resetting progress for stages 3-5`);
+          addLog(`Starting cycle ${cycle}/${totalCycles} - Resetting progress for stages 3-5`);
         }
       }
       else if (run_status === 'completed') { //when test is fully completed
@@ -126,30 +135,31 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
           newMap.delete(testId);
           return newMap;
         });
-        
+
         // Update run status in database
         await updateRunStatus(testId, run_status, run_stage);
-        
+
         // Save results to database
-        if (testResults.aluminum.length > 0 || testResults.silicon.length > 0) {
-          await saveResults(testId, testResults);
+        const currentResults = testResultsRef.current;
+        if (currentResults.aluminum.length > 0 || currentResults.silicon.length > 0) {
+          await saveResults(testId, currentResults);
         }
-        
+
         // Update runs status
-        setRuns(prevRuns => 
-          prevRuns.map(run => 
-            run.trial_id === testId 
-              ? { ...run, run_status: run_status, results: testResults }
+        setRuns(prevRuns =>
+          prevRuns.map(run =>
+            run.trial_id === testId
+              ? { ...run, run_status: run_status, results: testResultsRef.current }
               : run
           )
         );
-        
+
         // If this test is currently being viewed, update modal
-        if (activeTestId === testId && showProcessModal) {
+        if (activeTestIdRef.current === testId && showProcessModalRef.current) {
           setCurrentProcessStage(processStages.length);
           setCurrentCycle(null);
         }
-      } 
+      }
       else if (run_status === 'failed' || run_status === 'error' || run_status === 'stopped') {
         setActiveTests(prev => {
           const newMap = new Map(prev);
@@ -159,31 +169,31 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
         // Update run status in database
         await updateRunStatus(testId, run_status, run_stage);
         // Update runs status
-        setRuns(prevRuns => 
-          prevRuns.map(run => 
-            run.trial_id === testId 
+        setRuns(prevRuns =>
+          prevRuns.map(run =>
+            run.trial_id === testId
               ? { ...run, run_status: run_status }
               : run
           )
         );
         // If this test is currently being viewed, close the modal and show message
-        if (activeTestId === testId && showProcessModal) {
+        if (activeTestIdRef.current === testId && showProcessModalRef.current) {
           setShowProcessModal(false);
           setActiveTestId(null);
-          addLog && addLog(`Test ${testId} ${run_status}: ${data.message || 'Process ended'}`);
+          addLog(`Test ${testId} ${run_status}: ${data.message || 'Process ended'}`);
         }
       }
       else if (run_status === 'running') { // When a stage from current test is completed
         const stageNumber = parseInt(run_stage);
-        
+
         // Clear camera preview state when moving to running
         setWaitingCameraPreview(false);
-        
+
         // Handle cycle information if provided
         if (data.cycle) {
           setCurrentCycle(data.cycle);
         }
-        
+
         setActiveTests(prev => {
           const newMap = new Map(prev);
           newMap.set(testId, {
@@ -198,22 +208,22 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
         await updateRunStatus(testId, run_status, run_stage);
 
         // Update runs status to running
-        setRuns(prevRuns => 
-          prevRuns.map(run => 
-            run.trial_id === testId 
+        setRuns(prevRuns =>
+          prevRuns.map(run =>
+            run.trial_id === testId
               ? { ...run, run_status: run_status, run_stage: stageNumber, cycle: data.cycle || 1 }
               : run
           )
         );
-        
+
         // If this test is currently being viewed, update modal
-        if (activeTestId === testId && showProcessModal) {
+        if (activeTestIdRef.current === testId && showProcessModalRef.current) {
           setCurrentProcessStage(stageNumber);
         }
       }
       else if (run_status === 'image_analysis_started') {
         // Standalone image analysis started — open the ProcessModal
-        addLog && addLog(`Image analysis started: ${testId}`);
+        addLog(`Image analysis started: ${testId}`);
         setActiveTestId(testId);
         setCurrentProcessStage(0);
         setCurrentCycle(1);
@@ -221,13 +231,13 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       }
       else if (run_status === 'waiting_camera_preview') {
         // Camera preview is active on RPI, waiting for user confirmation
-        addLog && addLog(`Camera preview active for test ${testId} - waiting for confirmation`);
+        addLog(`Camera preview active for test ${testId} - waiting for confirmation`);
         // If modal isn't open yet (e.g. image analysis), open it
-        if (!showProcessModal) {
+        if (!showProcessModalRef.current) {
           setActiveTestId(testId);
           setShowProcessModal(true);
         }
-        if (activeTestId === testId || !activeTestId) {
+        if (activeTestIdRef.current === testId || !activeTestIdRef.current) {
           setActiveTestId(testId);
           setWaitingCameraPreview(true);
           if (data.cycle) {
@@ -238,14 +248,14 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       else if (run_status === 'camera_capture') {
         // Camera captured successfully, clear preview state
         setWaitingCameraPreview(false);
-        addLog && addLog(`Camera captured image for test ${testId}`);
+        addLog(`Camera captured image for test ${testId}`);
       }
       else if (run_status === 'image_analysis_completed') {
         setWaitingCameraPreview(false);
-        if (activeTestId === testId && showProcessModal) {
+        if (activeTestIdRef.current === testId && showProcessModalRef.current) {
           setCurrentProcessStage(processStages.length);
         }
-        addLog && addLog(`Image analysis completed: ${testId} - ${data.message || ''}`);
+        addLog(`Image analysis completed: ${testId} - ${data.message || ''}`);
       }
     });
 
@@ -254,9 +264,9 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       const { testId, message, cycle } = result;
   setConfirmationData({ testId, message, cycle });
       setShowConfirmationModal(true);
-      addLog && addLog(`Confirmation required for test ${testId}: ${message}`);
+      addLog(`Confirmation required for test ${testId}: ${message}`);
     });
-  }, [activeTestId, showProcessModal, processStages.length, addLog, updateRunStatus, saveResults, testResults]);
+  }, [addLog, updateRunStatus, saveResults, processStages.length]);
 
   // Handle confirmation response
   const handleConfirmation = (confirmed) => {

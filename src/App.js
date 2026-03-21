@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/dashboard/Sidebar';
 import MainView from './components/dashboard/MainView';
@@ -174,7 +174,7 @@ export default function App() {
   });
   const [token, setToken] = useState(() => localStorage.getItem('ur2_token'));
 
-  const addLog = (log) => setLogs((prev) => [...prev, log]);
+  const addLog = useCallback((log) => setLogs((prev) => [...prev, log]), []);
 
   const handleLogin = (userData, authToken) => {
     setUser(userData);
