@@ -100,18 +100,18 @@ export function applyCalibration(ciValue, calibration) {
  *
  * @param {[number, number, number]} rgb - normalized [r, g, b]
  * @param {'al'|'si'} solutionType
- * @returns {number} concentration (calibrated * dilution factor)
+ * @returns {number} concentration (calibrated, without dilution factor)
  */
 export function getConcentration(rgb, solutionType) {
   const [r, g, b] = rgb;
   const st = (solutionType || '').toLowerCase();
   if (st === 'al') {
     const ci = calculateAlCi(r, g, b);
-    return applyCalibration(ci, CALIBRATION_AL) * DILUTION_FACTOR;
+    return applyCalibration(ci, CALIBRATION_AL);
   }
   if (st === 'si') {
     const ci = calculateSiCi(r, g, b);
-    return applyCalibration(ci, CALIBRATION_SI) * DILUTION_FACTOR;
+    return applyCalibration(ci, CALIBRATION_SI);
   }
   throw new Error("solutionType must be 'al' or 'si'");
 }
@@ -122,5 +122,5 @@ export function getConcentration(rgb, solutionType) {
  * Formula: round(1.54 * [Al] + [Si])
  */
 export function getDissolutionIndex(alConcentration, siConcentration) {
-  return Math.round(1.54 * alConcentration + siConcentration);
+  return Math.round((1.54 * alConcentration + siConcentration) * DILUTION_FACTOR);
 }

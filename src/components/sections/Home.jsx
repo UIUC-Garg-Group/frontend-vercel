@@ -106,6 +106,10 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       clearInterval(interval);
     };
   }, []);
+  // Detect unmount
+  useEffect(() => {
+    return () => console.warn('[DEBUG] HomePage UNMOUNTED — all state lost');
+  }, []);
 ////////////////////////////////////////////////////////////////////////////////
   // Separate useEffect for setting up stage update callback
   // Uses refs to avoid stale closures — this callback is registered ONCE
@@ -118,6 +122,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
       const run_stage = data.run_stage;
       const cycle = data.cycle;
 
+      console.log(`[DEBUG] Stage callback: status=${run_status}, stage=${run_stage}, testId=${testId}, activeTestIdRef=${activeTestIdRef.current}, showModalRef=${showProcessModalRef.current}`);
       addLog(`Stage update received: Test ${testId}, Status ${run_status}, Stage ${run_stage}${cycle ? `, Cycle ${cycle}` : ''}`);
 
       // Handle different status types
@@ -178,6 +183,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
         );
         // If this test is currently being viewed, close the modal and show message
         if (activeTestIdRef.current === testId && showProcessModalRef.current) {
+          console.warn(`[DEBUG] Closing modal due to status: ${run_status}, message: ${data.message}`);
           setShowProcessModal(false);
           setActiveTestId(null);
           addLog(`Test ${testId} ${run_status}: ${data.message || 'Process ended'}`);
@@ -428,6 +434,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
   };
 
   const handleCloseProcessModal = () => {
+    console.trace('[DEBUG] handleCloseProcessModal called');
     setShowProcessModal(false);
     setSelectedRun(null);
     setActiveTestId(null);
