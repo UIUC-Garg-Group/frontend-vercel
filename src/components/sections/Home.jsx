@@ -289,16 +289,20 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
   };
 
   // Check for newly created test that should show process modal
+  // Runs on an interval so it picks up window.activeTestInfo set by CreateTestModal
   useEffect(() => {
-    if (window.activeTestInfo && window.activeTestInfo.showProcessModal) {
-      setActiveTestId(window.activeTestInfo.testId);
-      setShowProcessModal(true);
-      setCurrentProcessStage(0);
-      addLog && addLog(`Showing process modal for newly created test: ${window.activeTestInfo.testId}`);
-      
-      // Clear the global state
-      window.activeTestInfo = null;
-    }
+    const check = () => {
+      if (window.activeTestInfo && window.activeTestInfo.showProcessModal) {
+        setActiveTestId(window.activeTestInfo.testId);
+        setShowProcessModal(true);
+        setCurrentProcessStage(0);
+        addLog && addLog(`Showing process modal for newly created test: ${window.activeTestInfo.testId}`);
+        window.activeTestInfo = null;
+      }
+    };
+    check(); // run immediately on mount
+    const interval = setInterval(check, 200);
+    return () => clearInterval(interval);
   }, [addLog]);
 
 
