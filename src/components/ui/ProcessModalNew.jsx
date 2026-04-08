@@ -20,6 +20,7 @@ const ProcessModal = ({
   title = "Process Running",
   isInterrupted = false,
   waitingCameraPreview = false,
+  waitingCleaning = false,
   activeTestId = null,
   onResultsUpdate = null,  // Callback to pass results to parent
   onEmergencyStop = null   // Emergency stop callback
@@ -35,6 +36,9 @@ const ProcessModal = ({
   const [waitStartTime, setWaitStartTime] = useState(null);
   const [remainingTime, setRemainingTime] = useState(330); // 5.5 minutes in seconds
   const [waitSkipped, setWaitSkipped] = useState(false);
+  const [cleaningStartTime, setCleaningStartTime] = useState(null);
+  const [cleaningRemaining, setCleaningRemaining] = useState(240); // 4 minutes
+  const [cleaningSkipped, setCleaningSkipped] = useState(false);
   const [filtrationConfirmed, setFiltrationConfirmed] = useState(false);
   const [dissolutionResults, setDissolutionResults] = useState([]);
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -89,6 +93,19 @@ const ProcessModal = ({
     setRemainingTime(0);
     setWaitStartTime(null); // Stop the countdown
     // Notify backend to skip wait
+    if (mqttService?.client?.connected) {
+      mqttService.client.publish('ur2/manual/wait_complete', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        skipped: true
+      }));
+    }
+  };
+
+  // Handle skip cleaning wait
+  const handleSkipCleaning = () => {
+    setCleaningSkipped(true);
+    setCleaningRemaining(0);
+    setCleaningStartTime(null);
     if (mqttService?.client?.connected) {
       mqttService.client.publish('ur2/manual/wait_complete', JSON.stringify({
         timestamp: new Date().toISOString(),
@@ -238,6 +255,38 @@ const ProcessModal = ({
 
     return () => clearInterval(interval);
   }, [waitStartTime, waitSkipped]);
+
+  // Auto-start cleaning timer when waitingCleaning prop becomes true
+  useEffect(() => {
+    if (waitingCleaning && !cleaningStartTime && !cleaningSkipped) {
+      setCleaningStartTime(Date.now());
+      setCleaningRemaining(240);
+      setCleaningSkipped(false);
+    }
+  }, [waitingCleaning, cleaningStartTime, cleaningSkipped]);
+
+  // Countdown timer for 4-minute cleaning wait
+  useEffect(() => {
+    if (!cleaningStartTime || cleaningSkipped) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - cleaningStartTime) / 1000);
+      const remaining = Math.max(0, 240 - elapsed);
+      setCleaningRemaining(remaining);
+
+      if (remaining === 0) {
+        clearInterval(interval);
+        setCleaningStartTime(null);
+        if (mqttService?.client?.connected) {
+          mqttService.client.publish('ur2/manual/wait_complete', JSON.stringify({
+            timestamp: new Date().toISOString()
+          }));
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [cleaningStartTime, cleaningSkipped]);
 
   // Update viewing stage when current stage changes
   useEffect(() => {
@@ -697,6 +746,33 @@ const ProcessModal = ({
             </div>
           )}
           
+          {/* Dilution Container Cleaning Timer */}
+          {waitingCleaning && !cleaningSkipped && cleaningRemaining > 0 && (
+            <div className="p-4 md:p-6 mb-4 bg-cyan-50 border border-cyan-300 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="w-8 h-8 bg-cyan-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    🧹
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-cyan-900 mb-2">Dilution Container Cleaning</h4>
+                  <div className="flex items-center justify-between">
+                    <div className="text-2xl font-bold text-cyan-800 tabular-nums">
+                      {Math.floor(cleaningRemaining / 60)}:{String(cleaningRemaining % 60).padStart(2, '0')}
+                    </div>
+                    <button
+                      onClick={handleSkipCleaning}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium rounded transition-colors"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Results and Images Container */}
           <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:h-full md:overflow-hidden">
             

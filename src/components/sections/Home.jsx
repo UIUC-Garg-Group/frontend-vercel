@@ -26,6 +26,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
   const [activeTestId, setActiveTestId] = useState(null);
   const [currentCycle, setCurrentCycle] = useState(1);
   const [waitingCameraPreview, setWaitingCameraPreview] = useState(false); // Track camera preview state
+  const [waitingCleaning, setWaitingCleaning] = useState(false); // Track dilution container cleaning state
   const [testResults, setTestResults] = useState({ aluminum: [], silicon: [] }); // Store real-time results
 
   // Refs to avoid stale closures in the MQTT callback
@@ -251,9 +252,15 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
           }
         }
       }
+      else if (run_status === 'waiting_cleaning') {
+        // Dilution container cleaning wait started
+        setWaitingCleaning(true);
+        addLog(`Dilution container cleaning started for test ${testId}`);
+      }
       else if (run_status === 'camera_capture') {
         // Camera captured successfully, clear preview state
         setWaitingCameraPreview(false);
+        setWaitingCleaning(false);
         addLog(`Camera captured image for test ${testId}`);
       }
       else if (run_status === 'image_analysis_completed') {
@@ -587,6 +594,7 @@ export default function HomePage({ addLog, mqttConnected: mqttConnectedProp }) {
           selectedRun && ["failed", "error", "stopped"].includes((selectedRun.run_status || '').toLowerCase())
         }
         waitingCameraPreview={waitingCameraPreview}
+        waitingCleaning={waitingCleaning}
         activeTestId={activeTestId}
         onResultsUpdate={(results) => setTestResults(results)}
         onEmergencyStop={() => {
