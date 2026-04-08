@@ -727,9 +727,10 @@ const ProcessModal = ({
                       <thead className="sticky top-0 bg-white">
                         <tr className="border-b-2 border-gray-200">
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Sample</th>
-                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum (μM)</th>
-                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon (μM)</th>
-                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">RGB</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum (ppb)</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon (ppb)</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">AL RGB</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">SI RGB</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Dissolution Index</th>
                         </tr>
                       </thead>
@@ -745,12 +746,10 @@ const ProcessModal = ({
                               <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(alData?.concentration)}</td>
                               <td className="py-3 px-3 md:px-4 text-gray-600">{formatConcentration(siData?.concentration)}</td>
                               <td className="py-3 px-3 md:px-4 text-gray-600 text-xs font-mono">
-                                {(() => {
-                                  const rgb = alData?.rgb || siData?.rgb;
-                                  if (!rgb) return 'N/A';
-                                  const [r, g, b] = rgb;
-                                  return `(${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`;
-                                })()}
+                                {alData?.rgb ? `(${alData.rgb[0].toFixed(3)}, ${alData.rgb[1].toFixed(3)}, ${alData.rgb[2].toFixed(3)})` : 'N/A'}
+                              </td>
+                              <td className="py-3 px-3 md:px-4 text-gray-600 text-xs font-mono">
+                                {siData?.rgb ? `(${siData.rgb[0].toFixed(3)}, ${siData.rgb[1].toFixed(3)}, ${siData.rgb[2].toFixed(3)})` : 'N/A'}
                               </td>
                               <td className="py-3 px-3 md:px-4 text-gray-600 font-semibold">{diData?.dissolution_index != null ? diData.dissolution_index : 'N/A'}</td>
                             </tr>
