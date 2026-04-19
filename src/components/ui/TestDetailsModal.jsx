@@ -40,6 +40,58 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
     return formatDate(end);
   };
 
+  // Normalize results: handle both { aluminum: [], silicon: [], dissolution: [] } object format
+  // and legacy flat array format
+  const normalizeResults = () => {
+    const raw = run?.results;
+    if (!raw) return { alResults: [], siResults: [], dissolutionResults: [] };
+
+    // Object format (from DB save)
+    if (raw.aluminum || raw.silicon || raw.dissolution) {
+      return {
+        alResults: raw.aluminum || [],
+        siResults: raw.silicon || [],
+        dissolutionResults: raw.dissolution || [],
+      };
+    }
+
+    // Legacy flat array format
+    if (Array.isArray(raw)) {
+      return {
+        alResults: raw.filter(r => r.solution_type === 'al'),
+        siResults: raw.filter(r => r.solution_type === 'si'),
+        dissolutionResults: [],
+      };
+    }
+
+    return { alResults: [], siResults: [], dissolutionResults: [] };
+  };
+
+  const { alResults, siResults, dissolutionResults } = normalizeResults();
+
+  // Build per-cycle raw data rows combining Al, Si, and dissolution
+  const buildCycleRows = () => {
+    const cycles = new Map();
+    alResults.forEach(r => {
+      const c = r.cycle ?? 1;
+      if (!cycles.has(c)) cycles.set(c, {});
+      cycles.get(c).al = r;
+    });
+    siResults.forEach(r => {
+      const c = r.cycle ?? 1;
+      if (!cycles.has(c)) cycles.set(c, {});
+      cycles.get(c).si = r;
+    });
+    dissolutionResults.forEach(r => {
+      const c = r.cycle ?? 1;
+      if (!cycles.has(c)) cycles.set(c, {});
+      cycles.get(c).dissolution = r;
+    });
+    return [...cycles.entries()].sort((a, b) => a[0] - b[0]).map(([cycle, data]) => ({ cycle, ...data }));
+  };
+
+  const cycleRows = buildCycleRows();
+
   // Prepare CSV data with real results
   const prepareCsvData = () => {
     const rows = [
@@ -54,22 +106,21 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
       ['Solid-to-liquid ratio', '0.5 g/L'],
       [],
       ['Sample Results'],
-      ['Cycle', 'Solution Type', 'Concentration', 'RGB_R', 'RGB_G', 'RGB_B', 'Timestamp', 'Source Image', 'Cropped Cuvette', 'Cropped Analysis']
+      ['Cycle', 'Al Concentration', 'Al RGB_R', 'Al RGB_G', 'Al RGB_B', 'Si Concentration', 'Si RGB_R', 'Si RGB_G', 'Si RGB_B', 'Dissolution Index']
     ];
-    // Add real results if available
-    if (run && Array.isArray(run.results) && run.results.length > 0) {
-      run.results.forEach((sample, idx) => {
+    if (cycleRows.length > 0) {
+      cycleRows.forEach(row => {
         rows.push([
-          sample.cycle ?? idx + 1,
-          sample.solution_type ?? '',
-          sample.concentration ?? '',
-          sample.rgb ? sample.rgb[0] : '',
-          sample.rgb ? sample.rgb[1] : '',
-          sample.rgb ? sample.rgb[2] : '',
-          sample.timestamp ? formatDate(sample.timestamp) : '',
-          sample.source_image ?? '',
-          sample.cropped_cuvette ?? '',
-          sample.cropped_analysis ?? ''
+          row.cycle,
+          row.al?.concentration ?? '',
+          row.al?.rgb ? row.al.rgb[0] : '',
+          row.al?.rgb ? row.al.rgb[1] : '',
+          row.al?.rgb ? row.al.rgb[2] : '',
+          row.si?.concentration ?? '',
+          row.si?.rgb ? row.si.rgb[0] : '',
+          row.si?.rgb ? row.si.rgb[1] : '',
+          row.si?.rgb ? row.si.rgb[2] : '',
+          row.dissolution?.dissolution_index ?? '',
         ]);
       });
     } else {
@@ -81,33 +132,30 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
   const csvData = prepareCsvData();
   const csvFilename = `UR2_Test_${generateTestId(run)}_${new Date().toISOString().split('T')[0]}.csv`;
 
-  // Compute real results from run.results
+  // Compute summary results
   const computeResults = () => {
-    const results = run?.results || [];
-    const alResults = results.filter(r => r.solution_type === 'al');
-    const siResults = results.filter(r => r.solution_type === 'si');
-    
-    // Average concentration for each type
-    const avgAl = alResults.length > 0 
-      ? alResults.reduce((sum, r) => sum + (r.concentration || 0), 0) / alResults.length 
+    const avgAl = alResults.length > 0
+      ? alResults.reduce((sum, r) => sum + (r.concentration || 0), 0) / alResults.length
       : 0;
-    const avgSi = siResults.length > 0 
-      ? siResults.reduce((sum, r) => sum + (r.concentration || 0), 0) / siResults.length 
+    const avgSi = siResults.length > 0
+      ? siResults.reduce((sum, r) => sum + (r.concentration || 0), 0) / siResults.length
       : 0;
-    
-    // Dissolution index: 1.54 * [Al] + [Si]
-    const dissolutionIndex = 1.54 * avgAl + avgSi;
+
+    // Use stored dissolution index if available, otherwise compute
+    const dissolutionIndex = dissolutionResults.length > 0
+      ? dissolutionResults.reduce((sum, r) => sum + (r.dissolution_index || 0), 0) / dissolutionResults.length
+      : 1.54 * avgAl + avgSi;
     const siAlRatio = avgAl > 0 ? avgSi / avgAl : 0;
-    
+
     return {
       dissolutionIndex,
       aluminum: avgAl,
       silicon: avgSi,
       siAlRatio,
-      hasResults: results.length > 0
+      hasResults: alResults.length > 0 || siResults.length > 0
     };
   };
-  
+
   const computedResults = computeResults();
 
   return (
@@ -200,6 +248,43 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
               </div>
             </div>
           </div>
+
+          {/* Per-Cycle Raw Data Table */}
+          {cycleRows.length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Per-Cycle Data</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Cycle</th>
+                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Al RGB</th>
+                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Al Conc.</th>
+                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Si RGB</th>
+                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Si Conc.</th>
+                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Dissolution Index</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {cycleRows.map(row => (
+                      <tr key={row.cycle}>
+                        <td className="px-3 py-2 font-medium">{row.cycle}</td>
+                        <td className="px-3 py-2 font-mono text-xs">
+                          {row.al?.rgb ? `(${row.al.rgb.map(v => typeof v === 'number' ? v.toFixed(1) : v).join(', ')})` : 'N/A'}
+                        </td>
+                        <td className="px-3 py-2">{row.al?.concentration != null ? row.al.concentration.toFixed(4) : 'N/A'}</td>
+                        <td className="px-3 py-2 font-mono text-xs">
+                          {row.si?.rgb ? `(${row.si.rgb.map(v => typeof v === 'number' ? v.toFixed(1) : v).join(', ')})` : 'N/A'}
+                        </td>
+                        <td className="px-3 py-2">{row.si?.concentration != null ? row.si.concentration.toFixed(4) : 'N/A'}</td>
+                        <td className="px-3 py-2">{row.dissolution?.dissolution_index != null ? row.dissolution.dissolution_index.toFixed(4) : 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Test Conditions */}
           <div>

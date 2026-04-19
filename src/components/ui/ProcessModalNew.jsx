@@ -293,8 +293,11 @@ const ProcessModal = ({
     setViewingStage(currentStage);
   }, [currentStage]);
 
-  // keep a ref so we don't re-subscribe on every meta change
+  // keep refs so we don't re-subscribe on every state change
   const latestImageMetaRef = useRef(null);
+  const aluminumResultsRef = useRef(aluminumResults);
+  const siliconResultsRef = useRef(siliconResults);
+  const dissolutionResultsRef = useRef(dissolutionResults);
   useEffect(() => {
     latestImageMetaRef.current = latestImageMeta;
   }, [latestImageMeta]);
@@ -313,28 +316,33 @@ const ProcessModal = ({
           if (meta.dissolution_index != null) {
             setDissolutionResults(prevResults => {
               const newResults = [...prevResults, meta];
+              if (onResultsUpdate) {
+                onResultsUpdate({ aluminum: aluminumResultsRef.current, silicon: siliconResultsRef.current, dissolution: newResults });
+              }
               return newResults;
             });
             console.log('📷 Received dissolution index:', meta.dissolution_index);
             return; // dissolution_index messages don't have images
           }
-          
+
           // Append data to appropriate result array based on solution_type
           // Only add to results if it has concentration data (skip camera preview messages)
           if (meta.concentration != null) {
             if (meta.solution_type === 'al') {
               setAluminumResults(prevResults => {
                 const newResults = [...prevResults, meta];
+                aluminumResultsRef.current = newResults;
                 if (onResultsUpdate) {
-                  onResultsUpdate({ aluminum: newResults, silicon: siliconResults });
+                  onResultsUpdate({ aluminum: newResults, silicon: siliconResultsRef.current, dissolution: dissolutionResultsRef.current });
                 }
                 return newResults;
               });
             } else if (meta.solution_type === 'si') {
               setSiliconResults(prevResults => {
                 const newResults = [...prevResults, meta];
+                siliconResultsRef.current = newResults;
                 if (onResultsUpdate) {
-                  onResultsUpdate({ aluminum: aluminumResults, silicon: newResults });
+                  onResultsUpdate({ aluminum: aluminumResultsRef.current, silicon: newResults, dissolution: dissolutionResultsRef.current });
                 }
                 return newResults;
               });
