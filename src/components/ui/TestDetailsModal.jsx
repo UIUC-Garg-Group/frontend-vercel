@@ -132,31 +132,9 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
   const csvData = prepareCsvData();
   const csvFilename = `UR2_Test_${generateTestId(run)}_${new Date().toISOString().split('T')[0]}.csv`;
 
-  // Compute summary results
-  const computeResults = () => {
-    const avgAl = alResults.length > 0
-      ? alResults.reduce((sum, r) => sum + (r.concentration || 0), 0) / alResults.length
-      : 0;
-    const avgSi = siResults.length > 0
-      ? siResults.reduce((sum, r) => sum + (r.concentration || 0), 0) / siResults.length
-      : 0;
-
-    // Use stored dissolution index if available, otherwise compute
-    const dissolutionIndex = dissolutionResults.length > 0
-      ? dissolutionResults.reduce((sum, r) => sum + (r.dissolution_index || 0), 0) / dissolutionResults.length
-      : 1.54 * avgAl + avgSi;
-    const siAlRatio = avgAl > 0 ? avgSi / avgAl : 0;
-
-    return {
-      dissolutionIndex,
-      aluminum: avgAl,
-      silicon: avgSi,
-      siAlRatio,
-      hasResults: alResults.length > 0 || siResults.length > 0
-    };
+  const formatConcentration = (value) => {
+    return value != null ? parseFloat(value).toFixed(3) : 'N/A';
   };
-
-  const computedResults = computeResults();
 
   return (
     <div
@@ -219,76 +197,48 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
             </div>
           </div>
 
-          {/* Core UR2 Results */}
+          {/* Results Table — matches process modal layout */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">1. Test Results</h3>
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="text-sm text-gray-600 mb-2">Dissolution Index (UR2 Index):</div>
-              <div className="text-lg font-semibold text-blue-800">
-                1.54 × [Al] + [Si] = {computedResults.hasResults ? computedResults.dissolutionIndex.toFixed(4) : 'N/A'} 
-              </div>
-            </div>
-          </div>
-
-          {/* Raw Concentration Data */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">2. Raw Concentration Data</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Dissolved Aluminum (Al³⁺):</div>
-                <div className="text-lg font-semibold text-gray-900">{computedResults.hasResults ? computedResults.aluminum.toFixed(4) : 'N/A'}</div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-600 mb-1">Dissolved Silicon (Si⁴⁺):</div>
-                <div className="text-lg font-semibold text-gray-900">{computedResults.hasResults ? computedResults.silicon.toFixed(4) : 'N/A'}</div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 md:col-span-2">
-                <div className="text-sm text-gray-600 mb-1">Si/Al Ratio:</div>
-                <div className="text-lg font-semibold text-gray-900">{computedResults.hasResults ? computedResults.siAlRatio.toFixed(4) : 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Per-Cycle Raw Data Table */}
-          {cycleRows.length > 0 && (
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Per-Cycle Data</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Results</h3>
+            {cycleRows.length === 0 ? (
+              <div className="text-gray-400 text-sm py-8 text-center">No results available</div>
+            ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border border-gray-200 rounded-lg">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Cycle</th>
-                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Al RGB</th>
-                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Al Conc.</th>
-                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Si RGB</th>
-                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Si Conc.</th>
-                      <th className="px-3 py-2 text-left text-gray-600 font-medium">Dissolution Index</th>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Sample</th>
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Aluminum (ppb)</th>
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Silicon (ppb)</th>
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">AL RGB</th>
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">SI RGB</th>
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Dissolution Index</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {cycleRows.map(row => (
-                      <tr key={row.cycle}>
-                        <td className="px-3 py-2 font-medium">{row.cycle}</td>
-                        <td className="px-3 py-2 font-mono text-xs">
-                          {row.al?.rgb ? `(${row.al.rgb.map(v => typeof v === 'number' ? v.toFixed(1) : v).join(', ')})` : 'N/A'}
+                  <tbody>
+                    {cycleRows.map((row, index) => (
+                      <tr key={row.cycle} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-3 text-gray-700 font-medium">{index + 1}</td>
+                        <td className="py-3 px-3 text-gray-600">{row.al?.concentration != null ? formatConcentration(row.al.concentration) : 'N/A'}</td>
+                        <td className="py-3 px-3 text-gray-600">{row.si?.concentration != null ? formatConcentration(row.si.concentration) : 'N/A'}</td>
+                        <td className="py-3 px-3 text-gray-600 text-xs font-mono">
+                          {row.al?.rgb ? `(${row.al.rgb[0].toFixed(3)}, ${row.al.rgb[1].toFixed(3)}, ${row.al.rgb[2].toFixed(3)})` : 'N/A'}
                         </td>
-                        <td className="px-3 py-2">{row.al?.concentration != null ? row.al.concentration.toFixed(4) : 'N/A'}</td>
-                        <td className="px-3 py-2 font-mono text-xs">
-                          {row.si?.rgb ? `(${row.si.rgb.map(v => typeof v === 'number' ? v.toFixed(1) : v).join(', ')})` : 'N/A'}
+                        <td className="py-3 px-3 text-gray-600 text-xs font-mono">
+                          {row.si?.rgb ? `(${row.si.rgb[0].toFixed(3)}, ${row.si.rgb[1].toFixed(3)}, ${row.si.rgb[2].toFixed(3)})` : 'N/A'}
                         </td>
-                        <td className="px-3 py-2">{row.si?.concentration != null ? row.si.concentration.toFixed(4) : 'N/A'}</td>
-                        <td className="px-3 py-2">{row.dissolution?.dissolution_index != null ? row.dissolution.dissolution_index.toFixed(4) : 'N/A'}</td>
+                        <td className="py-3 px-3 text-gray-600 font-semibold">{row.dissolution?.dissolution_index != null ? row.dissolution.dissolution_index : 'N/A'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Test Conditions */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">3. Test Conditions</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Test Conditions</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center text-sm">
                 <Clock className="w-4 h-4 mr-2 text-gray-400" />
