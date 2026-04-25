@@ -37,7 +37,7 @@ export default function Navbar({ activePage, setActivePage, user, onLogout }) {
           <div className={`p-3 ${collapsed ? 'text-center' : ''}`}>
             <div className="flex items-center gap-2 text-sm text-gray-300 mb-2">
               <User size={16} />
-              {!collapsed && <span className="truncate">{user.email}</span>}
+              {!collapsed && <span className="truncate">{user.email || user.name || user.username}</span>}
             </div>
             <button
               onClick={onLogout}

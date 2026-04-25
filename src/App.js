@@ -236,7 +236,7 @@ export default function App() {
         <Routes>
           <Route 
             path="/login" 
-            element={user ? <Navigate to="/" replace /> : <Login />} 
+            element={user ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />}
           />
           <Route 
             path="/auth/callback" 
