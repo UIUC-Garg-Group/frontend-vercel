@@ -44,19 +44,27 @@ const ProcessModal = ({
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [currentCameraCapture, setCurrentCameraCapture] = useState(null);
   const [selectedSampleType, setSelectedSampleType] = useState('al'); // 'al' or 'si'
+  const [customFilename, setCustomFilename] = useState(''); // Custom filename for image
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
   // Handle camera preview confirmation (user clicks confirm after selecting sample type)
   const handlePreviewConfirmed = () => {
     if (mqttService?.client?.connected && activeTestId) {
-      mqttService.client.publish(CAMERA_PREVIEW_CONFIRM_TOPIC, JSON.stringify({
+      const payload = {
         testId: activeTestId,
         cycle: currentCycle,
         sampleType: selectedSampleType, // 'al' or 'si'
         timestamp: new Date().toISOString()
-      }));
-      console.log(`📸 Camera preview confirmed - ${selectedSampleType} sample - sent to RPI`);
+      };
+      // Include custom filename if provided (trimmed, without extension)
+      if (customFilename.trim()) {
+        payload.customFilename = customFilename.trim().replace(/\.png$/i, '');
+      }
+      mqttService.client.publish(CAMERA_PREVIEW_CONFIRM_TOPIC, JSON.stringify(payload));
+      console.log(`📸 Camera preview confirmed - ${selectedSampleType} sample - filename: ${customFilename || 'auto'} - sent to RPI`);
+      // Reset filename for next capture
+      setCustomFilename('');
     }
   };
 
@@ -710,6 +718,21 @@ const ProcessModal = ({
                   <div className="flex items-center gap-2 mb-3">
                     <div className="animate-pulse w-3 h-3 bg-green-500 rounded-full"></div>
                     <span className="text-xs text-purple-700">Preview is live on RPI display...</span>
+                  </div>
+                  
+                  {/* Custom Filename Input */}
+                  <div className="mb-4 p-3 bg-white rounded-lg border border-purple-200">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Image Filename (optional):</label>
+                    <input
+                      type="text"
+                      value={customFilename}
+                      onChange={(e) => setCustomFilename(e.target.value)}
+                      placeholder="e.g., sample_001 (leave empty for auto timestamp)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {customFilename ? `Will save as: ${customFilename.trim().replace(/\.png$/i, '')}_${selectedSampleType}.png` : 'Will use timestamp format'}
+                    </p>
                   </div>
                   
                   {/* Sample Type Toggle */}
