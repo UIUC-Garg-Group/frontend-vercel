@@ -16,6 +16,7 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
       second: '2-digit'
     });
   };
+  const microSymbol = '\u00B5M'; 
 
   const generateTestId = (run) => {
     if (run.test_id) return run.test_id;
@@ -208,8 +209,8 @@ export default function TestDetailsModal({ isOpen, onClose, run }) {
                   <thead>
                     <tr className="border-b-2 border-gray-200">
                       <th className="py-3 px-3 text-left font-semibold text-gray-700">Sample</th>
-                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Aluminum (ppb)</th>
-                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Silicon (ppb)</th>
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Aluminum ({microSymbol})</th>
+                      <th className="py-3 px-3 text-left font-semibold text-gray-700">Silicon ({microSymbol})</th>
                       <th className="py-3 px-3 text-left font-semibold text-gray-700">AL RGB</th>
                       <th className="py-3 px-3 text-left font-semibold text-gray-700">SI RGB</th>
                       <th className="py-3 px-3 text-left font-semibold text-gray-700">Dissolution Index</th>

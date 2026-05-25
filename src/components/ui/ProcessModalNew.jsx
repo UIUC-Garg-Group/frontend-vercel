@@ -10,6 +10,8 @@ const CAMERA_TRIGGER_TOPIC = 'ur2/camera/trigger';
 const CAMERA_READY_TOPIC = 'ur2/camera/ready';
 const CAMERA_PREVIEW_CONFIRM_TOPIC = 'ur2/camera/preview_confirmed';
 
+const microSymbol = '\u00B5M'; 
+
 // Add isInterrupted prop to control UI when process is stopped by user
 const ProcessModal = ({
   isOpen,
@@ -834,8 +836,8 @@ const ProcessModal = ({
                       <thead className="sticky top-0 bg-white">
                         <tr className="border-b-2 border-gray-200">
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Sample</th>
-                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum (ppb)</th>
-                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon (ppb)</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Aluminum ({microSymbol})</th>
+                          <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Silicon ({microSymbol})</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">AL RGB</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">SI RGB</th>
                           <th className="py-3 px-3 md:px-4 text-left font-semibold text-gray-700">Dissolution Index</th>
